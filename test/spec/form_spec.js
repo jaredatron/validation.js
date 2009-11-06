@@ -2,9 +2,16 @@ describe('Form#',function(){
   var form, input;
   
   beforeEach(function(){
-    form = document.body.down('form');
-    input = form.getActiveElements().first();
+    form = $('a_form');
+    input = $('an_input');
+  });
+  
+  afterEach(function(){
     form.validationErrors().clear();
+    form.validators.length = 0;
+    form.getElements().each(function(element){
+      element.validators().length = 0;
+    });
   });
 
   describe('validators',function(){
@@ -25,7 +32,122 @@ describe('Form#',function(){
       form.validates('livesOnTheMoon');
       expect(form.validators()).toContain(Form.Element.Validators.livesOnTheMoon);
       delete Form.Element.Validators.livesOnTheMoon;
-    })
+    });
+  });
+  
+  describe('isValid',function(){
+    
+    it('should return true when there are no validators and no elements',function(){
+      var form = new Element('form');
+      expect(form.isValid()).toEqual(true);
+    });
+    
+    it('should execute all it\'s and it\'s children\'s validation methods and return the collected value',function(){
+      
+      
+      var input_values_dont_match_run_count = 0;
+      form.validates(function inputValuesDontMatch(elements){
+        input_values_dont_match_run_count++;
+        if (this.an_input.getValue() == this.a_second_input.getValue()){
+          this.validationErrors().add('input values must not match');
+        }
+      });
+      
+      var contains_only_letters_run_count = 0;
+      function containsOnLetters(value){
+        contains_only_letters_run_count++;
+        if (!value.match(/^[a-z]+$/i)){
+          this.validationErrors().add('input values must contain only letters');
+        }
+      }
+      form.an_input.validates(containsOnLetters);
+      form.a_second_input.validates(containsOnLetters);
+      
+      form.an_input.setValue('123');
+      form.a_second_input.setValue('456');
+      
+      expect(input_values_dont_match_run_count).toEqual(0);
+      expect(contains_only_letters_run_count).toEqual(0);
+
+      expect(form.isValid()).toEqual(false);
+      expect(input_values_dont_match_run_count).toEqual(1);
+      expect(contains_only_letters_run_count).toEqual(2);
+      expect(form.validationErrors().size()).toEqual(2);
+      
+      
+      form.an_input.setValue('888');
+      form.a_second_input.setValue('888');
+      
+      expect(form.isValid()).toEqual(false);
+      expect(input_values_dont_match_run_count).toEqual(2);
+      expect(contains_only_letters_run_count).toEqual(4);
+      expect(form.validationErrors().size()).toEqual(3);
+      
+      
+      form.an_input.setValue('abc');
+      form.a_second_input.setValue('abc');
+      
+      expect(form.isValid()).toEqual(false);
+      expect(input_values_dont_match_run_count).toEqual(3);
+      expect(contains_only_letters_run_count).toEqual(6);
+      expect(form.validationErrors().size()).toEqual(1);
+      
+      
+      form.an_input.setValue('bob');
+      form.a_second_input.setValue('sam');
+      
+      expect(form.isValid()).toEqual(true);
+      expect(input_values_dont_match_run_count).toEqual(4);
+      expect(contains_only_letters_run_count).toEqual(8);
+      expect(form.validationErrors().size()).toEqual(0);
+      
+      // cleanup
+      form.validators().length = 0;
+      form.an_input.validators().length = 0;
+      form.a_second_input.validators().length = 0;
+      form.an_input.setValue('');
+      form.a_second_input.setValue('');
+    });
+    
+    it('should only take enabled form elements into account when validating',function(){
+      expect(form.isValid()).toEqual(true);
+      
+      input.validates(function alwaysInvalid(){
+        this.validationErrors().add('I\'ll never be valid muhahaha');
+      });
+      
+      input.disabled = false;
+      expect(form.isValid()).toEqual(false);
+      expect(form.validationErrors().toArray()[0][0]).toEqual(input);
+      expect(form.validationErrors().toArray()[0][1]).toEqual('I\'ll never be valid muhahaha');
+      
+      input.disabled = true;
+      expect(form.isValid()).toEqual(true);
+      
+      //cleanup
+      input.disabled = false;
+      input.validators.length = 0;
+    });
+    
+    it('should only take visible form elements into account when validating',function(){
+      expect(form.isValid()).toEqual(true);
+      expect(input.show().visible()).toEqual(true);
+      
+      input.validates(function alwaysInvalid(){
+        this.validationErrors().add('I\'ll never be valid muhahaha');
+      });
+      
+      expect(form.isValid()).toEqual(false);
+      expect(form.validationErrors().toArray()[0][0]).toEqual(input);
+      expect(form.validationErrors().toArray()[0][1]).toEqual('I\'ll never be valid muhahaha');
+      
+      input.hide();
+      expect(form.isValid()).toEqual(true);
+      
+      //cleanup
+      input.show();
+      input.validators.length = 0;
+    });
   });
   
   
@@ -92,6 +214,5 @@ describe('Form#',function(){
       });
     });
 
-
   });
-})
+});

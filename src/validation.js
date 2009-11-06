@@ -94,9 +94,8 @@ Object.extend(Form.Element.Methods,{
 
   isValid: function isValid(element){
     element.validationErrors().clear();
-    return element.validators().inject(true, function(is_valid, validator){
-      return validator.call(element, element.getValue()) && is_valid;
-    });
+    element.validators().invoke('call', element, element.getValue());
+    return element.validationErrors().size() < 1;
   },
   
   validationErrors: function validationErrors(element){
@@ -116,6 +115,15 @@ Object.extend(Form.Methods,{
   
   validators: Form.Element.Methods.validators,
   validates: Form.Element.Methods.validates,
+  isValid: function isValid(form){
+    form.validationErrors().clear();
+    var elements = form.getActiveElements();
+
+    elements.invoke('isValid');
+    form.validators().invoke('call', form, elements);
+    
+    return form.validationErrors().size() < 1;
+  },
   
   validationErrors: function validationErrors(form){
     return form._validation_errors || (form._validation_errors = new Form.ValidationErrors(form));

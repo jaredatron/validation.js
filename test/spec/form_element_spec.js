@@ -28,23 +28,23 @@ describe('FormElement#', function () {
 
   describe('isValid',function(){
     it('should execute all the validation methods and return the collected value',function(){
-      form_element.setValue(2);
       
       var is_one_run_count = 0;
-      form_element.validates(function isOne(value){ 
+      form_element.validates(function isOne(value){
         is_one_run_count++;
-        return value == "1";
+        if (value != "1") this.validationErrors().add('value must be 1');
       });
       
       var is_not_two_run_count = 0;
-      form_element.validates(function isNotTwo(value){ 
+      form_element.validates(function isNotTwo(value){
         is_not_two_run_count++;
-        return value != "2";
+        if (value == "2") this.validationErrors().add('value must not be 2');
       });
       
       expect(is_one_run_count).toEqual(0);
       expect(is_not_two_run_count).toEqual(0);
       
+      form_element.setValue(2);
       expect(form_element.isValid()).toEqual(false);
       expect(is_one_run_count).toEqual(1);
       expect(is_not_two_run_count).toEqual(1);

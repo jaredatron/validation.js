@@ -18,9 +18,21 @@
 
 <body>
 
-  <form action="/" method="post">
-    <input name="usable" type="text">use me</input>
-    <input name="unusable" type="text" disabled>go away</input>
+  <form id="a_form" action="/" method="post">
+    <a id="a_link" href="">a link</a>
+    <input    id="an_input"         name="an_input"         type="text"></input>
+    <input    id="a_second_input"   name="a_second_input"   type="text"></input>
+    <input    id="a_disabled_input" name="a_disabled_input" type="text" disabled></input>
+    <input    id="a_radio_button"   name="a_radio_button"   type="radio"/>
+    <input    id="a_checkbox"       name="a_checkbox"       type="checkbox"/>
+    <input    id="a_button"         name="a_button"         type="button"/>
+    <input    id="a_submit"         name="a_submit"         type="submit"/>
+    <textarea id="a_textarea"       name="a_textarea"></textarea>
+    <select   id="a_select"         name="a_select">
+      <option value="one">1</option>
+      <option value="two">2</option>
+    </select>
+    
   </form>
 
 <script type="text/javascript">
