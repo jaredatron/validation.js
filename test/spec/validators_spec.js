@@ -1,75 +1,105 @@
 describe('Form.Element.Validators',function(){
 
-  var input;
+  var element;
 
   beforeEach(function(){
-    input = new Element('input');
+    element = new Element('input');
   });
 
-  describe('.isblank',function(){
-    it('should error when the value is not blank',function(){
-      input.validates('isBlank');
+  function createValidatorTests(o){
+    describe('.'+o.validator, function(){
 
-      input.setValue('');
-      expect(input.isValid()).toEqual(true);
+      if (o.beforeEach) beforeEach(o.beforeEach)
 
-      input.setValue('something');
-      expect(input.isValid()).toEqual(false);
-      expect(input.validationErrors().fullMessages().first()).toEqual('INPUT must be blank');
+      beforeEach(function(){
+        element.validates(o.validator);
+      });
+
+
+      it('should error when the value '+o.bad_value_description,function(){
+        var conclusion, error_message;
+        runs(function(){
+          element.setValue(o.bad_value).validate(function(is_valid, element){
+            conclusion = is_valid;
+            error_message = element.validationErrors().fullMessages().first();
+          });
+        });
+        waits(1);
+        runs(function(){
+          expect(conclusion).toEqual(false);
+          expect(error_message).toEqual(o.error_message);
+        });
+      });
+
+
+      it('should not error when the value '+o.good_value_description,function(){
+        var conclusion, error_messages_size;
+        runs(function(){
+          element.setValue(o.good_value).validate(function(is_valid, element){
+            conclusion = is_valid;
+            error_messages_size = element.validationErrors().size();
+          });
+        });
+        waits(1);
+        runs(function(){
+          expect(conclusion).toEqual(true);
+          expect(error_messages_size).toEqual(0);
+        });
+      });
+
     });
+  }
+
+  createValidatorTests({
+    validator: 'isBlank',
+    bad_value: 'something',
+    bad_value_description: 'is not blank',
+    error_message: 'INPUT must be blank',
+    good_value: '',
+    good_value_description: 'is blank',
   });
 
-  describe('.isNotBlank',function(){
-    it('should error when the value is blank',function(){
-      input.validates('isNotBlank');
-
-      input.setValue('something');
-      expect(input.isValid()).toEqual(true);
-
-      input.setValue('');
-      expect(input.isValid()).toEqual(false);
-      expect(input.validationErrors().fullMessages().first()).toEqual('INPUT cannot be blank');
-    });
+  createValidatorTests({
+    validator: 'isNotBlank',
+    bad_value: '',
+    bad_value_description: 'is blank',
+    error_message: 'INPUT cannot be blank',
+    good_value: 'something',
+    good_value_description: 'is not blank',
   });
 
-  describe('.isChecked',function(){
-    it('should error when the checkbox is not checked',function(){
-      input.type = "checkbox";
-      input.validates('isChecked');
-
-      input.checked = true;
-      expect(input.isValid()).toEqual(true);
-
-      input.checked = false;
-      expect(input.isValid()).toEqual(false);
-      expect(input.validationErrors().fullMessages().first()).toEqual('INPUT must be checked');
-    });
+  createValidatorTests({
+    beforeEach: function() {
+      element.type = "checkbox";
+    },
+    validator: 'isChecked',
+    bad_value: false,
+    bad_value_description: 'is not checked',
+    error_message: 'INPUT must be checked',
+    good_value: true,
+    good_value_description: 'is checked',
   });
 
-  describe('.isNotChecked',function(){
-    it('should error when the checkbox is not checked',function(){
-      input.type = "checkbox";
-      input.validates('isNotChecked');
 
-      input.checked = false;
-      expect(input.isValid()).toEqual(true);
-
-      input.checked = true;
-      expect(input.isValid()).toEqual(false);
-      expect(input.validationErrors().fullMessages().first()).toEqual('INPUT cannot be checked');
-    });
+  createValidatorTests({
+    beforeEach: function() {
+      element.type = "checkbox";
+    },
+    validator: 'isNotChecked',
+    bad_value: true,
+    bad_value_description: 'is checked',
+    error_message: 'INPUT cannot be checked',
+    good_value: false,
+    good_value_description: 'is not checked',
   });
 
-  describe('.isEmailAddress',function(){
-    it('should error when the checkbox is not checked',function(){
-      input.validates('isEmailAddress');
-
-      input.setValue('person@example.com')
-      expect(input.isValid()).toEqual(true);
-
-      input.setValue('asdsadsad asd sadas')
-      expect(input.isValid()).toEqual(false);
-      expect(input.validationErrors().fullMessages().first()).toEqual('INPUT must be a valid email address');
-    });
+  createValidatorTests({
+    validator: 'isEmailAddress',
+    bad_value: 'asdsadsad asd sadas',
+    bad_value_description: 'is not a valid email address',
+    error_message: 'INPUT must be a valid email address',
+    good_value: 'person@example.com',
+    good_value_description: 'is a valid email address',
   });
+
 });

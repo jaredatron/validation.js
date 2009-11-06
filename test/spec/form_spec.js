@@ -28,114 +28,152 @@ describe('Form',function(){
       expect(form.retrieve('_validators', [])).toContain(Form.Validators.livesOnTheMoon);
       delete Form.Validators.livesOnTheMoon;
     });
+
+    it('should accept onValid and onInvalid callbacks in a hash',function(){
+      input.validates('isNotBlank');
+      var is_valid, on_complete_called_with;
+      var validation_callbacks = {
+        onComplete: function(is_valid){
+          on_complete_called_with = is_valid ? 'valid' : 'invalid';
+        },
+        onValid: function onValid(){
+          (function(){ is_valid = 'yes'; }).delay(0.1);
+        },
+        onInvalid: function onInvalid(){
+          (function(){ is_valid = 'no'; }).delay(0.1);
+        }
+      };
+
+      runs(function(){
+        input.setValue('');
+        is_valid = on_complete_called_with = null;
+        form.validate(validation_callbacks);
+      });
+      waits(110);
+      runs(function(){
+        expect(is_valid).toEqual('no');
+        expect(on_complete_called_with).toEqual('invalid');
+      });
+
+      runs(function(){
+        input.setValue('not blank');
+        is_valid = on_complete_called_with = null;
+        form.validate(validation_callbacks);
+      });
+      waits(110);
+      runs(function(){
+        expect(is_valid).toEqual('yes');
+        expect(on_complete_called_with).toEqual('valid');
+      });
+    });
   });
 
-  describe('#isValid',function(){
-
-    it('should return true when there are no validators and no elements',function(){
-      var form = new Element('form');
-      expect(form.isValid()).toEqual(true);
-    });
-
-    it('should execute all it\'s and it\'s children\'s validation methods and return the collected value',function(){
-
-
-      var input_values_dont_match_run_count = 0;
-      form.validates(function inputValuesDontMatch(elements){
-        input_values_dont_match_run_count++;
-        if (this.an_input.getValue() == this.a_second_input.getValue()){
-          this.validationErrors().add('input values must not match');
-        }
-      });
-
-      var contains_only_letters_run_count = 0;
-      function containsOnLetters(value){
-        contains_only_letters_run_count++;
-        if (!value.match(/^[a-z]+$/i)){
-          this.validationErrors().add('input values must contain only letters');
-        }
-      }
-      form.an_input.validates(containsOnLetters);
-      form.a_second_input.validates(containsOnLetters);
-
-      form.an_input.setValue('123');
-      form.a_second_input.setValue('456');
-
-      expect(input_values_dont_match_run_count).toEqual(0);
-      expect(contains_only_letters_run_count).toEqual(0);
-
-      expect(form.isValid()).toEqual(false);
-      expect(input_values_dont_match_run_count).toEqual(1);
-      expect(contains_only_letters_run_count).toEqual(2);
-      expect(form.validationErrors().size()).toEqual(2);
-
-
-      form.an_input.setValue('888');
-      form.a_second_input.setValue('888');
-
-      expect(form.isValid()).toEqual(false);
-      expect(input_values_dont_match_run_count).toEqual(2);
-      expect(contains_only_letters_run_count).toEqual(4);
-      expect(form.validationErrors().size()).toEqual(3);
-
-
-      form.an_input.setValue('abc');
-      form.a_second_input.setValue('abc');
-
-      expect(form.isValid()).toEqual(false);
-      expect(input_values_dont_match_run_count).toEqual(3);
-      expect(contains_only_letters_run_count).toEqual(6);
-      expect(form.validationErrors().size()).toEqual(1);
-
-
-      form.an_input.setValue('bob');
-      form.a_second_input.setValue('sam');
-
-      expect(form.isValid()).toEqual(true);
-      expect(input_values_dont_match_run_count).toEqual(4);
-      expect(contains_only_letters_run_count).toEqual(8);
-      expect(form.validationErrors().size()).toEqual(0);
-
-    });
-
-    it('should only take enabled form elements into account when validating',function(){
-      expect(form.isValid()).toEqual(true);
-
-      input.validates(function alwaysInvalid(){
-        this.validationErrors().add('I\'ll never be valid muhahaha');
-      });
-
-      input.disabled = false;
-      expect(form.isValid()).toEqual(false);
-      expect(form.validationErrors().toArray()[0].element).toEqual(input);
-      expect(form.validationErrors().toArray()[0].message).toEqual('I\'ll never be valid muhahaha');
-
-      input.disabled = true;
-      expect(form.isValid()).toEqual(true);
-
-      //cleanup
-      input.disabled = false;
-    });
-
-    it('should only take visible form elements into account when validating',function(){
-      expect(form.isValid()).toEqual(true);
-      expect(input.show().visible()).toEqual(true);
-
-      input.validates(function alwaysInvalid(){
-        this.validationErrors().add('I\'ll never be valid muhahaha');
-      });
-
-      expect(form.isValid()).toEqual(false);
-      expect(form.validationErrors().toArray()[0].element).toEqual(input);
-      expect(form.validationErrors().toArray()[0].message).toEqual('I\'ll never be valid muhahaha');
-
-      input.hide();
-      expect(form.isValid()).toEqual(true);
-
-      //cleanup
-      input.show();
-    });
-  });
+  // describe('#isValid',function(){
+  //
+  //   it('should return true when there are no validators and no elements',function(){
+  //     var form = new Element('form');
+  //     expect(form.isValid()).toEqual(true);
+  //   });
+  //
+  //   it('should execute all it\'s and it\'s children\'s validation methods and return the collected value',function(){
+  //
+  //
+  //     var input_values_dont_match_run_count = 0;
+  //     form.validates(function inputValuesDontMatch(elements){
+  //       input_values_dont_match_run_count++;
+  //       if (this.an_input.getValue() == this.a_second_input.getValue()){
+  //         this.validationErrors().add('input values must not match');
+  //       }
+  //     });
+  //
+  //     var contains_only_letters_run_count = 0;
+  //     function containsOnLetters(value){
+  //       contains_only_letters_run_count++;
+  //       if (!value.match(/^[a-z]+$/i)){
+  //         this.validationErrors().add('input values must contain only letters');
+  //       }
+  //     }
+  //     form.an_input.validates(containsOnLetters);
+  //     form.a_second_input.validates(containsOnLetters);
+  //
+  //     form.an_input.setValue('123');
+  //     form.a_second_input.setValue('456');
+  //
+  //     expect(input_values_dont_match_run_count).toEqual(0);
+  //     expect(contains_only_letters_run_count).toEqual(0);
+  //
+  //     expect(form.isValid()).toEqual(false);
+  //     expect(input_values_dont_match_run_count).toEqual(1);
+  //     expect(contains_only_letters_run_count).toEqual(2);
+  //     expect(form.validationErrors().size()).toEqual(2);
+  //
+  //
+  //     form.an_input.setValue('888');
+  //     form.a_second_input.setValue('888');
+  //
+  //     expect(form.isValid()).toEqual(false);
+  //     expect(input_values_dont_match_run_count).toEqual(2);
+  //     expect(contains_only_letters_run_count).toEqual(4);
+  //     expect(form.validationErrors().size()).toEqual(3);
+  //
+  //
+  //     form.an_input.setValue('abc');
+  //     form.a_second_input.setValue('abc');
+  //
+  //     expect(form.isValid()).toEqual(false);
+  //     expect(input_values_dont_match_run_count).toEqual(3);
+  //     expect(contains_only_letters_run_count).toEqual(6);
+  //     expect(form.validationErrors().size()).toEqual(1);
+  //
+  //
+  //     form.an_input.setValue('bob');
+  //     form.a_second_input.setValue('sam');
+  //
+  //     expect(form.isValid()).toEqual(true);
+  //     expect(input_values_dont_match_run_count).toEqual(4);
+  //     expect(contains_only_letters_run_count).toEqual(8);
+  //     expect(form.validationErrors().size()).toEqual(0);
+  //
+  //   });
+  //
+  //   it('should only take enabled form elements into account when validating',function(){
+  //     expect(form.isValid()).toEqual(true);
+  //
+  //     input.validates(function alwaysInvalid(){
+  //       this.validationErrors().add('I\'ll never be valid muhahaha');
+  //     });
+  //
+  //     input.disabled = false;
+  //     expect(form.isValid()).toEqual(false);
+  //     expect(form.validationErrors().toArray()[0].element).toEqual(input);
+  //     expect(form.validationErrors().toArray()[0].message).toEqual('I\'ll never be valid muhahaha');
+  //
+  //     input.disabled = true;
+  //     expect(form.isValid()).toEqual(true);
+  //
+  //     //cleanup
+  //     input.disabled = false;
+  //   });
+  //
+  //   it('should only take visible form elements into account when validating',function(){
+  //     expect(form.isValid()).toEqual(true);
+  //     expect(input.show().visible()).toEqual(true);
+  //
+  //     input.validates(function alwaysInvalid(){
+  //       this.validationErrors().add('I\'ll never be valid muhahaha');
+  //     });
+  //
+  //     expect(form.isValid()).toEqual(false);
+  //     expect(form.validationErrors().toArray()[0].element).toEqual(input);
+  //     expect(form.validationErrors().toArray()[0].message).toEqual('I\'ll never be valid muhahaha');
+  //
+  //     input.hide();
+  //     expect(form.isValid()).toEqual(true);
+  //
+  //     //cleanup
+  //     input.show();
+  //   });
+  // });
 
 
 
@@ -203,18 +241,26 @@ describe('Form',function(){
 
     describe('.fullMessages',function(){
       it('should display human readable error messages',function(){
-        input.validates(function(){
-          this.validationErrors().add('cannot be blank');
+        input.validates('isNotBlank');
+        var error_message;
+        runs(function(){
+          form.validate({
+            onComplete: function(is_valid, form){
+              error_message = form.validationErrors().fullMessages().first()
+            }
+          });
+        })
+        waits(110)
+        runs(function(){
+          expect(error_message).toEqual('an input cannot be blank');
         });
-        expect( form.validate().validationErrors().fullMessages().first() ).toEqual('an input cannot be blank');
       });
 
       it('should join each error message when toString is called on the collection',function(){
-        input.validates(function(){
-          this.validationErrors().add('cannot be blank');
-        });
-        form.validates(function(){
+        input.validates('isNotBlank');
+        form.validates(function(value, element, complete){
           this.validationErrors().add('cannot be ignored');
+          complete();
         });
 
         var error_messages = form.validate().validationErrors().fullMessages().toString();
@@ -228,26 +274,39 @@ describe('Form',function(){
   });
 
   it('should fire validation for each element when validated',function(){
-    var success_observer_called = failure_observer_called = false;
+    var success_observer_called, failure_observer_called;
     input.validates('isBlank');
     form
       .observe('form:validation:success', function(event){
-        success_observer_called = true;
+        success_observer_called++;
       })
       .observe('form:validation:failure', function(event){
-        failure_observer_called = true;
+        failure_observer_called++;
       });
 
 
-    input.setValue('');
-    expect(form.isValid()).toBe(true);
-    expect(success_observer_called).toBe(true);
-    expect(failure_observer_called).toBe(false);
+    runs(function(){
+      success_observer_called = failure_observer_called = 0;
+      input.setValue('');
+      form.validate();
+    });
+    waits(110);
+    runs(function(){
+      expect(success_observer_called).toBe(1);
+      expect(failure_observer_called).toBe(0);
+    });
 
-    input.setValue('not blank');
-    success_observer_called = failure_observer_called = false;
-    expect(form.isValid()).toBe(false);
-    expect(success_observer_called).toBe(false);
-    expect(failure_observer_called).toBe(true);
+    waits(1);
+
+    runs(function(){
+      success_observer_called = failure_observer_called = 0;
+      input.setValue('not blank');
+      form.validate();
+    });
+    waits(110);
+    runs(function(){
+      expect(success_observer_called).toBe(0);
+      expect(failure_observer_called).toBe(1);
+    });
   });
 });

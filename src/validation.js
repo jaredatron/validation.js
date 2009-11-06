@@ -104,6 +104,74 @@ function validates(Type, element, validator){
   return element;
 }
 
+// collects all validators bound to the current state/value of it's element
+// so they can be called asyncronously.
+function validatorsFor(element){
+  if (element.nodeName === 'FORM'){ // TODO this optomize this later
+    var validators = []; element_values = {};
+    element.getActiveElements().each(function(form_element){
+      [].push.apply(validators, validatorsFor(form_element));
+      element_values[form_element.name] = form_element.getValue();
+    });
+    element.retrieve('_validators', []).map(function(validator){
+      validators.push(validator.bind(element).curry(element_values, element));
+    });
+    return validators;
+  }else{
+    return element.retrieve('_validators', []).map(function(validator){
+      return validator.bind(element).curry(element.getValue(), element);
+    });
+  }
+}
+
+function callValidatorsFor(element, callback){
+  var validators = validatorsFor(element), timedout = false;
+
+  if (!validators.length){
+    if (callback) callback(element);
+    return;
+  }
+
+  function validatorComplete(validator){
+    if (timedout) return console.warn('validatorComplete called after timeout');
+    validators = validators.without(validator);
+    if (validators.length) return;
+    if (callback) callback(element);
+  }
+  validators.clone().each(function(validator){
+    validator(validatorComplete.curry(validator));
+  });
+  //TODO add timeout mechanism here
+
+  (function(){
+    timedout = true;
+    if (!validators.length) return;
+    if (callback) callback(element);
+  }).delay(10);
+
+}
+
+function fireEventsFor(element, callbacks){
+  callbacks || (callbacks = {});
+  if (element.validationErrors().size() < 1){
+    if (element.nodeName === 'FORM'){
+      element.fire('form:validation:success', {element:element}, false);
+    }else{
+      element.fire('form:element:validation:success', {element:element}, false);
+    }
+    if ('onValid' in callbacks) callbacks.onValid(element);
+    if ('onComplete' in callbacks) callbacks.onComplete(true, element);
+  }else{
+    if (element.nodeName === 'FORM'){
+      element.fire('form:validation:failure', {element:element}, false);
+    }else{
+      element.fire('form:element:validation:failure', {element:element}, false);
+    }
+    if ('onInvalid' in callbacks) callbacks.onInvalid(element);
+    if ('onComplete' in callbacks) callbacks.onComplete(false, element);
+  }
+}
+
 Object.extend(Form.Element.Methods,{
   /** FormElement#validators
     *
@@ -129,19 +197,20 @@ Object.extend(Form.Element.Methods,{
     */
   validates: validates.curry(Form.Element),
 
-  validate: function(element){
+  /** FormElement#validate({
+    *   onComplete: function(){},
+    *   onValid: function(){},
+    *   onInvalid: function(){},
+    * });
+    *
+    */
+  validate: function(element, callbacks){
+    if (Object.isFunction(callbacks)) callbacks = {onComplete:callbacks};
     element.validationErrors().clear();
-    element.retrieve('_validators', []).invoke('call', element, element.getValue());
-    element.fire(
-      'form:element:validation:'+((element.validationErrors().size() < 1) ? 'success' : 'failure'),
-      {element:element},
-      false
-    );
+    callValidatorsFor(element, function(){
+      fireEventsFor(element, callbacks);
+    });
     return element;
-  },
-
-  isValid: function isValid(element){
-    return element.validate().validationErrors().size() < 1;
   },
 
   validationErrors: function validationErrors(element){
@@ -158,30 +227,10 @@ Object.extend(Form.Methods,{
       return (element.style.display !== 'none' && element.style.visibility !== 'hidden' && element.disabled !== true);
     });
   },
-
-
   addValidator: Form.Element.Methods.addValidator,
   removeValidator: Form.Element.Methods.removeValidator,
-
   validates: validates.curry(Form),
-
-  validate: function validate(form){
-    form.validationErrors().clear();
-    var elements = form.getActiveElements();
-    elements.invoke('isValid');
-    form.retrieve('_validators', []).invoke('call', form, elements);
-    form.fire(
-      'form:validation:'+((form.validationErrors().size() < 1) ? 'success' : 'failure'),
-      {form:form},
-      true
-    );
-    return form;
-  },
-
-  isValid: function isValid(form){
-    return form.validate().validationErrors().size() < 1;
-  },
-
+  validate: Form.Element.Methods.validate,
   validationErrors: function validationErrors(form){
     return form._validation_errors || (form._validation_errors = new Form.ValidationErrors(form));
   }
@@ -203,21 +252,36 @@ Form.Validators = {
 };
 
 Form.Element.Validators = {
-  isBlank: function isBlank(value){
+  isBlank: function isBlank(value, element, validationComplete){
     if (!value.blank()) this.validationErrors().add('must be blank');
+    validationComplete();
   },
-  isNotBlank: function isNotBlank(value){
+  isNotBlank: function isNotBlank(value, element, validationComplete){
     if (value.blank()) this.validationErrors().add('cannot be blank');
+    validationComplete();
   },
-  isChecked: function isChecked(value){
-    if (!this.checked) this.validationErrors().add('must be checked');
+  isChecked: function isChecked(checked, element, validationComplete){
+    if (!checked) this.validationErrors().add('must be checked');
+    validationComplete();
   },
-  isNotChecked: function isNotChecked(value){
-    if (this.checked) this.validationErrors().add('cannot be checked');
+  isNotChecked: function isNotChecked(checked, element, validationComplete){
+    if (!!checked) this.validationErrors().add('cannot be checked');
+    validationComplete();
   },
-  isEmailAddress: function isEmailAddress(value){
+  isEmailAddress: function isEmailAddress(value, element, validationComplete){
     if (!EMAIL_ADDRESS_REGEX.test(value))
       this.validationErrors().add('must be a valid email address');
+    validationComplete();
+  },
+  exampleAsyncValidator: function exampleAsyncValidator(value, element, validationComplete){
+    new Ajax.Request('username_available',{
+      onComplete: function(){
+        validationComplete();
+      },
+      onFailure: function(response) {
+        element.validationErrors().add('is already taken');
+      }
+    });
   }
 };
 

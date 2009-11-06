@@ -20,35 +20,113 @@ describe('FormElement', function () {
     });
   });
 
-  describe('#isValid',function(){
-    it('should execute all the validation methods and return the collected value',function(){
+  describe('#validate',function(){
+    it('should accept onComplete, onValid and onInvalid callbacks',function(){
+      form_element.validates('isNotBlank');
+      var is_valid, on_complete_called_with;
+      var validation_callbacks = {
+        onComplete: function onComplete(is_valid){
+          on_complete_called_with = is_valid;
+        },
+        onValid: function onValid(){
+          (function(){ is_valid = 'yes'; }).delay(0.1);
+        },
+        onInvalid: function onInvalid(){
+          (function(){ is_valid = 'no'; }).delay(0.1);
+        }
+      };
 
-      var is_one_run_count = 0;
-      form_element.validates(function isOne(value){
-        is_one_run_count++;
-        if (value != "1") this.validationErrors().add('value must be 1');
+      runs(function(){
+        form_element.setValue('');
+        is_valid = on_complete_called_with = null;
+        form_element.validate(validation_callbacks);
+      });
+      waits(110);
+      runs(function(){
+        expect(is_valid).toEqual('no');
+        expect(on_complete_called_with).toEqual(false);
       });
 
-      var is_not_two_run_count = 0;
-      form_element.validates(function isNotTwo(value){
-        is_not_two_run_count++;
-        if (value == "2") this.validationErrors().add('value must not be 2');
+      runs(function(){
+        form_element.setValue('not blank');
+        is_valid = on_complete_called_with = null;
+        form_element.validate(validation_callbacks);
       });
-
-      expect(is_one_run_count).toEqual(0);
-      expect(is_not_two_run_count).toEqual(0);
-
-      form_element.setValue(2);
-      expect(form_element.isValid()).toEqual(false);
-      expect(is_one_run_count).toEqual(1);
-      expect(is_not_two_run_count).toEqual(1);
-
-      form_element.setValue(1);
-      expect(form_element.isValid()).toEqual(true);
-      expect(is_one_run_count).toEqual(2);
-      expect(is_not_two_run_count).toEqual(2);
+      waits(110);
+      runs(function(){
+        expect(is_valid).toEqual('yes');
+        expect(on_complete_called_with).toEqual(true);
+      });
     });
+
+    it('should accept a single function as an onComplete callback',function(){
+      form_element.validates('isNotBlank');
+      var is_valid, on_complete_called_with;
+      function onComplete(is_valid){
+        on_complete_called_with = is_valid ? 'gtg' : 'bad';
+      }
+
+      runs(function(){
+        form_element.setValue('');
+        is_valid = on_complete_called_with = null;
+        form_element.validate(onComplete);
+      });
+      waits(110);
+      runs(function(){
+        expect(on_complete_called_with).toEqual('bad');
+      });
+
+      runs(function(){
+        form_element.setValue('not blank');
+        is_valid = on_complete_called_with = null;
+        form_element.validate(onComplete);
+      });
+      waits(110);
+      runs(function(){
+        expect(on_complete_called_with).toEqual('gtg');
+      });
+    });
+
+    // it('should accept onValid and onInvalid callbacks as first and second arguments',function(){
+    //   form_element.validates('isNotBlank');
+    //   var is_valid, on_complete_run;
+    //   function onComplete(){
+    //     (function(){ on_complete_run++; }).delay(0.1);
+    //   }
+    //   function onValid(){
+    //     (function(){ is_valid = 'yes'; }).delay(0.1);
+    //   }
+    //   function onInvalid(){
+    //     (function(){ is_valid = 'no'; }).delay(0.1);
+    //   };
+    //
+    //   runs(function(){
+    //     form_element.setValue('');
+    //     is_valid = null;
+    //     on_complete_run = 0;
+    //     form_element.validate(onComplete, onValid, onInvalid);
+    //   });
+    //   waits(110);
+    //   runs(function(){
+    //     expect(is_valid).toEqual('no');
+    //     expect(on_complete_run).toEqual(1);
+    //   });
+    //
+    //   runs(function(){
+    //     form_element.setValue('not blank');
+    //     is_valid = null;
+    //     on_complete_run = 0;
+    //     form_element.validate(onComplete, onValid, onInvalid);
+    //   });
+    //   waits(110);
+    //   runs(function(){
+    //     expect(is_valid).toEqual('yes');
+    //     expect(on_complete_run).toEqual(1);
+    //   });
+    // });
+
   });
+
 
   describe('#validationErrors()', function () {
 
@@ -118,24 +196,24 @@ describe('FormElement', function () {
   });
 
   it('should fire validation events when validated',function(){
-    var success_observer_called = failure_observer_called = false;
+    var success_observer_called, failure_observer_called;
     form_element
       .validates('isBlank')
       .observe('form:element:validation:success', function(){
-        success_observer_called = true;
+        success_observer_called++;
       })
       .observe('form:element:validation:failure', function(){
-        failure_observer_called = true;
+        failure_observer_called++;
       });
 
-    expect(form_element.isValid()).toBe(true);
-    expect(success_observer_called).toBe(true);
-    expect(failure_observer_called).toBe(false);
+    success_observer_called = failure_observer_called = 0;
+    form_element.setValue('').validate();
+    expect(success_observer_called).toBe(1);
+    expect(failure_observer_called).toBe(0);
 
-    form_element.setValue('not blank');
-    success_observer_called = failure_observer_called = false;
-    expect(form_element.isValid()).toBe(false);
-    expect(success_observer_called).toBe(false);
-    expect(failure_observer_called).toBe(true);
+    success_observer_called = failure_observer_called = 0;
+    form_element.setValue('not blank').validate();
+    expect(success_observer_called).toBe(0);
+    expect(failure_observer_called).toBe(1);
   });
 });
