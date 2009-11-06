@@ -99,6 +99,20 @@ describe('FormElement', function () {
 
         expect( form_element.validate().validationErrors().fullMessages().first() ).toEqual('first name cannot be blank');
       });
+
+      it('should join each error message when toString is called on the collection',function(){
+        form_element.name = "steve_jobs";
+        form_element.validates(function picky(){
+          this.validationErrors().add('cannot be wrong');
+          this.validationErrors().add('cannot be right');
+        });
+
+        var error_messages = form_element.validate().validationErrors().fullMessages().toString();
+        expect(
+          error_messages == 'steve jobs cannot be wrong, steve jobs cannot be right' ||
+          error_messages == 'steve jobs cannot be right, steve jobs cannot be wrong'
+        ).toBeTruthy();
+      });
     });
 
   });

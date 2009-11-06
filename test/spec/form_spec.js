@@ -208,6 +208,21 @@ describe('Form',function(){
         });
         expect( form.validate().validationErrors().fullMessages().first() ).toEqual('an input cannot be blank');
       });
+
+      it('should join each error message when toString is called on the collection',function(){
+        input.validates(function(){
+          this.validationErrors().add('cannot be blank');
+        });
+        form.validates(function(){
+          this.validationErrors().add('cannot be ignored');
+        });
+
+        var error_messages = form.validate().validationErrors().fullMessages().toString();
+        expect(
+          error_messages == 'a form cannot be ignored, an input cannot be blank' ||
+          error_messages == 'an input cannot be blank, a form cannot be ignored'
+        ).toBeTruthy();
+      });
     });
 
   });

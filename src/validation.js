@@ -35,10 +35,12 @@ Form.Element.ValidationErrors = Class.create(Enumerable,{
     return this;
   },
   fullMessages: function(){
-    var element = this.element;
-    return this.map(function(message){
+    var element = this.element,
+        full_messages = this.map(function(message){
       return new ValidationError(element, message).toString();
     });
+    full_messages.toString = fullMessagesToString;
+    return full_messages;
   }
 });
 
@@ -75,11 +77,15 @@ Form.ValidationErrors = Class.create(Form.Element.ValidationErrors,{
     return Object.isElement(element) ? element.validationErrors() : false;
   },
   fullMessages: function(){
-    return this.map(function(error){
-      return error.toString();
-    });
+    var full_messages = this.invoke('toString');
+    full_messages.toString = fullMessagesToString;
+    return full_messages;
   }
 });
+
+function fullMessagesToString(){
+  return this.join(', ');
+}
 
 
 function validates(Type, element, validator){
