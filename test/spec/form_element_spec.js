@@ -1,23 +1,23 @@
-describe('FormElement#', function () {
+describe('FormElement', function () {
   var form_element;
-  
+
   beforeEach(function () {
     form_element = new Element('input');
   });
-  
-  describe('validators',function(){
+
+  describe('#validators',function(){
     it('should return an array',function(){
       expect(Object.isArray(form_element.validators())).toEqual(true);
     });
   });
-  
-  describe('validates',function(){
+
+  describe('#validates',function(){
     it('should accept a function and push it onto the validators array',function(){
       function something(){}
       form_element.validates(something);
       expect(form_element.validators()).toContain(something);
     });
-    
+
     it('should accept a string name of a function in Form.Element.Validations',function(){
       Form.Element.Validators.livesOnTheMoon = function(){};
       form_element.validates('livesOnTheMoon');
@@ -26,29 +26,29 @@ describe('FormElement#', function () {
     });
   });
 
-  describe('isValid',function(){
+  describe('#isValid',function(){
     it('should execute all the validation methods and return the collected value',function(){
-      
+
       var is_one_run_count = 0;
       form_element.validates(function isOne(value){
         is_one_run_count++;
         if (value != "1") this.validationErrors().add('value must be 1');
       });
-      
+
       var is_not_two_run_count = 0;
       form_element.validates(function isNotTwo(value){
         is_not_two_run_count++;
         if (value == "2") this.validationErrors().add('value must not be 2');
       });
-      
+
       expect(is_one_run_count).toEqual(0);
       expect(is_not_two_run_count).toEqual(0);
-      
+
       form_element.setValue(2);
       expect(form_element.isValid()).toEqual(false);
       expect(is_one_run_count).toEqual(1);
       expect(is_not_two_run_count).toEqual(1);
-      
+
       form_element.setValue(1);
       expect(form_element.isValid()).toEqual(true);
       expect(is_one_run_count).toEqual(2);
@@ -56,10 +56,10 @@ describe('FormElement#', function () {
     });
   });
 
-  describe('.validationErrors()', function () {
+  describe('#validationErrors()', function () {
 
     it('should be an instance of Form.Element.ValidationErrors',function(){
-      expect(form_element.validationErrors() instanceof Form.Element.ValidationErrors).toEqual(true);
+      expect(form_element.validationErrors()).toBeAnInstanceOf(Form.Element.ValidationErrors);
     });
 
     describe('.clear',function(){
@@ -96,6 +96,16 @@ describe('FormElement#', function () {
     });
 
 
-  });
+    describe('.fullMessages',function(){
+      it('should display human readable error messages',function(){
+        form_element.name = 'firstname';
+        form_element.validates(function(){
+          this.validationErrors().add('cannot be blank');
+        });
 
+        expect( form_element.validate().validationErrors().fullMessages().first() ).toEqual('firstname cannot be blank');
+      });
+    });
+
+  });
 });

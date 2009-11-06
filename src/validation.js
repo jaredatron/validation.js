@@ -1,7 +1,7 @@
 (function(window) {
 /* Validation.js v0.1 (2009)
  * writen by Jared Grippe, jared@rupture.com
- * 
+ *
  *--------------------------------------------------------------------------*/
 
 
@@ -26,6 +26,12 @@ Form.Element.ValidationErrors = Class.create(Enumerable,{
     this.errors.push(error);
     return this;
   },
+  fullMessages: function(){
+    var name = this.element.name || this.element.id;
+    return this.map(function(error){
+      return name+" "+error;
+    });
+  }
 });
 
 Form.ValidationErrors = Class.create(Form.Element.ValidationErrors,{
@@ -60,6 +66,11 @@ Form.ValidationErrors = Class.create(Form.Element.ValidationErrors,{
       this.element.down('*[name="'+element_name+'"]');
     return Object.isElement(element) ? element.validationErrors() : false;
   },
+  fullMessages: function(){
+    return this.map(function(error){
+      return (error[0].name || error[0].id)+" "+error[1];
+    });
+  }
 });
 
 
@@ -71,7 +82,7 @@ Object.extend(Form.Element.Methods,{
   validators: function validators(element){
     return element._validators || (element._validators = []);
   },
-  
+
   /** FormElement#validates(validation | validation_name)
     *
     *
@@ -84,20 +95,24 @@ Object.extend(Form.Element.Methods,{
         throw new TypeError('unable to find validator named "'+validator+'"');
       }
     }
-    
+
     if (!Object.isFunction(validator))
       throw new Error('validator must be a function or a string');
-      
+
     element.validators().push(validator);
     return element;
   },
 
-  isValid: function isValid(element){
+  validate: function(element){
     element.validationErrors().clear();
     element.validators().invoke('call', element, element.getValue());
-    return element.validationErrors().size() < 1;
+    return element;
   },
-  
+
+  isValid: function isValid(element){
+    return element.validate().validationErrors().size() < 1;
+  },
+
   validationErrors: function validationErrors(element){
     return element._validation_errors || (element._validation_errors = new Form.Element.ValidationErrors(element));
   },
@@ -112,19 +127,21 @@ Object.extend(Form.Methods,{
       return (element.style.display !== 'none' && element.style.visibility !== 'hidden' && element.disabled !== true);
     });
   },
-  
+
   validators: Form.Element.Methods.validators,
   validates: Form.Element.Methods.validates,
-  isValid: function isValid(form){
+  validate: function validate(form){
     form.validationErrors().clear();
     var elements = form.getActiveElements();
-
     elements.invoke('isValid');
     form.validators().invoke('call', form, elements);
-    
-    return form.validationErrors().size() < 1;
+    return form;
   },
-  
+
+  isValid: function isValid(form){
+    return form.validate().validationErrors().size() < 1;
+  },
+
   validationErrors: function validationErrors(form){
     return form._validation_errors || (form._validation_errors = new Form.ValidationErrors(form));
   },
@@ -137,7 +154,7 @@ Element.addMethods();
 
 
 Form.Validators = {
-  
+
 };
 
 Form.Element.Validators = {
@@ -149,7 +166,7 @@ Form.Element.Validators = {
     if (!input.value.blank()) return true;
     input.form.validationErrors().add(input,'cannot be blank');
   },
-  
+
   isChecked: function isChecked(checkbox){
     if (checkbox.checked) return true;
     checkbox.form.validationErrors().add(checkbox,'must be checked');
@@ -158,7 +175,7 @@ Form.Element.Validators = {
     if (!checkbox.checked) return true;
     checkbox.form.validationErrors().add(checkbox,'should no be checked');
   },
-  
+
   isEmailAddress: function isEmailAddress(input){
     if (input.value.match(/^[^\s]+@[^\s]+\.\w\w+$/)) return true;
     input.form.validationErrors().add(input,'must be a valid email address');
