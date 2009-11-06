@@ -5,7 +5,19 @@
  *--------------------------------------------------------------------------*/
 
 
-Form.Validation = {};
+var ValidationError = function(element, message){
+  if (!element || !message) {
+    console.warn(element, message);
+    console.trace();
+  }
+  this.element = element;
+  this.message = message+'';
+};
+ValidationError.prototype = new String();
+ValidationError.prototype.valueOf = ValidationError.prototype.toString = function toString(){
+  return (this.element.name || this.element.id || this.element.nodeName).replace(/(_|-)+/g,' ')+' '+this.message;
+};
+
 
 Form.Element.ValidationErrors = Class.create(Enumerable,{
   initialize: function(element){
@@ -27,9 +39,9 @@ Form.Element.ValidationErrors = Class.create(Enumerable,{
     return this;
   },
   fullMessages: function(){
-    var name = this.element.name || this.element.id;
-    return this.map(function(error){
-      return name+" "+error;
+    var element = this.element;
+    return this.map(function(message){
+      return new ValidationError(element, message).toString();
     });
   }
 });
@@ -37,10 +49,10 @@ Form.Element.ValidationErrors = Class.create(Enumerable,{
 Form.ValidationErrors = Class.create(Form.Element.ValidationErrors,{
   toArray: function(){
     var form = this.element;
-    var errors = this.errors.map(function(error){ return [form, error]; });
+    var errors = this.errors.map(function(message){ return new ValidationError(form, message); });
     form.getActiveElements().each(function(element){
-      element.validationErrors().each(function(error){
-        errors.push([element, error]);
+      element.validationErrors().each(function(message){
+        errors.push(new ValidationError(element, message));
       });
     });
     return errors;
@@ -68,7 +80,7 @@ Form.ValidationErrors = Class.create(Form.Element.ValidationErrors,{
   },
   fullMessages: function(){
     return this.map(function(error){
-      return (error[0].name || error[0].id)+" "+error[1];
+      return error.toString();
     });
   }
 });
@@ -115,7 +127,7 @@ Object.extend(Form.Element.Methods,{
 
   validationErrors: function validationErrors(element){
     return element._validation_errors || (element._validation_errors = new Form.Element.ValidationErrors(element));
-  },
+  }
 
 });
 
@@ -144,7 +156,7 @@ Object.extend(Form.Methods,{
 
   validationErrors: function validationErrors(form){
     return form._validation_errors || (form._validation_errors = new Form.ValidationErrors(form));
-  },
+  }
 });
 
 
@@ -157,34 +169,25 @@ Form.Validators = {
 
 };
 
+var EMAIL_ADDRESS_REGEX = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
+
 Form.Element.Validators = {
-  isblank: function isblank(input){
-    if (input.value.blank()) return true;
-    input.form.validationErrors().add(input,'must be blank');
+  isBlank: function isBlank(value){
+    if (!value.blank()) this.validationErrors().add('must be blank');
   },
-  notBlank: function notBlank(input){
-    if (!input.value.blank()) return true;
-    input.form.validationErrors().add(input,'cannot be blank');
+  isNotBlank: function isNotBlank(value){
+    if (value.blank()) this.validationErrors().add('cannot be blank');
   },
-
-  isChecked: function isChecked(checkbox){
-    if (checkbox.checked) return true;
-    checkbox.form.validationErrors().add(checkbox,'must be checked');
+  isChecked: function isChecked(value){
+    if (!this.checked) this.validationErrors().add('must be checked');
   },
-  isNotChecked: function isNotChecked(checkbox){
-    if (!checkbox.checked) return true;
-    checkbox.form.validationErrors().add(checkbox,'should no be checked');
+  isNotChecked: function isNotChecked(value){
+    if (this.checked) this.validationErrors().add('cannot be checked');
   },
-
-  isEmailAddress: function isEmailAddress(input){
-    if (input.value.match(/^[^\s]+@[^\s]+\.\w\w+$/)) return true;
-    input.form.validationErrors().add(input,'must be a valid email address');
+  isEmailAddress: function isEmailAddress(value){
+    if (!EMAIL_ADDRESS_REGEX.test(value))
+      this.validationErrors().add('must be a valid email address');
   }
 };
-
-
-
-function return_true (){ return true;  }
-function return_false(){ return false; }
 
 })(this);

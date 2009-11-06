@@ -98,12 +98,12 @@ describe('FormElement', function () {
 
     describe('.fullMessages',function(){
       it('should display human readable error messages',function(){
-        form_element.name = 'firstname';
+        form_element.name = 'first_name';
         form_element.validates(function(){
           this.validationErrors().add('cannot be blank');
         });
 
-        expect( form_element.validate().validationErrors().fullMessages().first() ).toEqual('firstname cannot be blank');
+        expect( form_element.validate().validationErrors().fullMessages().first() ).toEqual('first name cannot be blank');
       });
     });
 

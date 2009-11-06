@@ -118,8 +118,8 @@ describe('Form',function(){
 
       input.disabled = false;
       expect(form.isValid()).toEqual(false);
-      expect(form.validationErrors().toArray()[0][0]).toEqual(input);
-      expect(form.validationErrors().toArray()[0][1]).toEqual('I\'ll never be valid muhahaha');
+      expect(form.validationErrors().toArray()[0].element).toEqual(input);
+      expect(form.validationErrors().toArray()[0].message).toEqual('I\'ll never be valid muhahaha');
 
       input.disabled = true;
       expect(form.isValid()).toEqual(true);
@@ -138,8 +138,8 @@ describe('Form',function(){
       });
 
       expect(form.isValid()).toEqual(false);
-      expect(form.validationErrors().toArray()[0][0]).toEqual(input);
-      expect(form.validationErrors().toArray()[0][1]).toEqual('I\'ll never be valid muhahaha');
+      expect(form.validationErrors().toArray()[0].element).toEqual(input);
+      expect(form.validationErrors().toArray()[0].message).toEqual('I\'ll never be valid muhahaha');
 
       input.hide();
       expect(form.isValid()).toEqual(true);
@@ -177,8 +177,8 @@ describe('Form',function(){
         input.validationErrors().add('input is broken');
         form.validationErrors().toArray().each(function(error){
           expect(
-            (error[0] === form  && error[1] == 'form is broken' ) ||
-            (error[0] === input && error[1] == 'input is broken')
+            (error.element === form  && error.message == 'form is broken' ) ||
+            (error.element === input && error.message == 'input is broken')
           ).toEqual(true);
         });
       });
@@ -188,7 +188,7 @@ describe('Form',function(){
       it('should push a new error on to the stack',function(){
         form.validationErrors().add('new form error');
         var form_contains_new_error = form.validationErrors().toArray().any(function(error){
-          return error[0] == form && error[1] == "new form error";
+          return error.element == form && error.message == "new form error";
         });
         expect(form_contains_new_error).toEqual(true);
       });
@@ -199,7 +199,7 @@ describe('Form',function(){
     it('should inherit all child element validation errors',function(){
       input.validationErrors().add('broken');
       var form_contains_child_error = form.validationErrors().toArray().any(function(error){
-        return error[1] == "broken";
+        return error.message == "broken";
       });
       expect(form_contains_child_error).toEqual(true);
     });
@@ -216,12 +216,10 @@ describe('Form',function(){
 
     describe('.fullMessages',function(){
       it('should display human readable error messages',function(){
-        input.name = 'lastname';
         input.validates(function(){
           this.validationErrors().add('cannot be blank');
         });
-
-        expect( form.validate().validationErrors().fullMessages().first() ).toEqual('lastname cannot be blank');
+        expect( form.validate().validationErrors().fullMessages().first() ).toEqual('an input cannot be blank');
       });
     });
 
