@@ -108,4 +108,26 @@ describe('FormElement', function () {
     });
 
   });
+
+  it('should fire validation events when validated',function(){
+    var success_observer_called = failure_observer_called = false;
+    form_element
+      .validates('isBlank')
+      .observe('form:element:validation:success', function(){
+        success_observer_called = true;
+      })
+      .observe('form:element:validation:failure', function(){
+        failure_observer_called = true;
+      });
+
+    expect(form_element.isValid()).toBe(true);
+    expect(success_observer_called).toBe(true);
+    expect(failure_observer_called).toBe(false);
+
+    form_element.setValue('not blank');
+    success_observer_called = failure_observer_called = false;
+    expect(form_element.isValid()).toBe(false);
+    expect(success_observer_called).toBe(false);
+    expect(failure_observer_called).toBe(true);
+  });
 });

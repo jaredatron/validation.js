@@ -27,11 +27,11 @@ describe('Form',function(){
       expect(form.validators()).toContain(something);
     });
 
-    it('should accept a string name of a function in Form.Element.Validations',function(){
-      Form.Element.Validators.livesOnTheMoon = function(){};
+    it('should accept a string name of a function in Form.Validators',function(){
+      Form.Validators.livesOnTheMoon = function(){};
       form.validates('livesOnTheMoon');
-      expect(form.validators()).toContain(Form.Element.Validators.livesOnTheMoon);
-      delete Form.Element.Validators.livesOnTheMoon;
+      expect(form.validators()).toContain(Form.Validators.livesOnTheMoon);
+      delete Form.Validators.livesOnTheMoon;
     });
   });
 
@@ -223,5 +223,30 @@ describe('Form',function(){
       });
     });
 
+  });
+
+  it('should fire validation for each element when validated',function(){
+    var success_observer_called = failure_observer_called = false;
+    input.validates('isBlank');
+    form
+      .observe('form:validation:success', function(event){
+        console.log('S', event.element());
+        success_observer_called = true;
+      })
+      .observe('form:validation:failure', function(event){
+        console.log('f', event.element());
+        failure_observer_called = true;
+      });
+
+
+    expect(form.isValid()).toBe(true);
+    expect(success_observer_called).toBe(true);
+    expect(failure_observer_called).toBe(false);
+
+    input.setValue('not blank');
+    success_observer_called = failure_observer_called = false;
+    expect(form.isValid()).toBe(false);
+    expect(success_observer_called).toBe(false);
+    expect(failure_observer_called).toBe(true);
   });
 });

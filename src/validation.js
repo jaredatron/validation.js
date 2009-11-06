@@ -1,6 +1,6 @@
 (function(window) {
 /* Validation.js v0.1 (2009)
- * writen by Jared Grippe, jared@rupture.com
+ * writen by Jared Grippe, jared@jaredgrippe.com
  *
  *--------------------------------------------------------------------------*/
 
@@ -86,6 +86,22 @@ Form.ValidationErrors = Class.create(Form.Element.ValidationErrors,{
 });
 
 
+function validates(Type, element, validator){
+  if (Object.isString(validator)){
+    if (validator in Type.Validators){
+      validator = Type.Validators[validator];
+    }else{
+      throw new TypeError('unable to find validator named "'+validator+'"');
+    }
+  }
+
+  if (!Object.isFunction(validator))
+    throw new Error('validator must be a function or a string');
+
+  element.validators().push(validator);
+  return element;
+}
+
 Object.extend(Form.Element.Methods,{
   /** FormElement#validators
     *
@@ -99,25 +115,16 @@ Object.extend(Form.Element.Methods,{
     *
     *
     */
-  validates: function validates(element, validator){
-    if (Object.isString(validator)){
-      if (validator in Form.Element.Validators){
-        validator = Form.Element.Validators[validator];
-      }else{
-        throw new TypeError('unable to find validator named "'+validator+'"');
-      }
-    }
-
-    if (!Object.isFunction(validator))
-      throw new Error('validator must be a function or a string');
-
-    element.validators().push(validator);
-    return element;
-  },
+  validates: validates.curry(Form.Element),
 
   validate: function(element){
     element.validationErrors().clear();
     element.validators().invoke('call', element, element.getValue());
+    element.fire(
+      'form:element:validation:'+((element.validationErrors().size() < 1) ? 'success' : 'failure'),
+      {element:element},
+      false
+    );
     return element;
   },
 
@@ -141,12 +148,19 @@ Object.extend(Form.Methods,{
   },
 
   validators: Form.Element.Methods.validators,
-  validates: Form.Element.Methods.validates,
+
+  validates: validates.curry(Form),
+
   validate: function validate(form){
     form.validationErrors().clear();
     var elements = form.getActiveElements();
     elements.invoke('isValid');
     form.validators().invoke('call', form, elements);
+    form.fire(
+      'form:validation:'+((form.validationErrors().size() < 1) ? 'success' : 'failure'),
+      {form:form},
+      true
+    );
     return form;
   },
 
@@ -163,13 +177,16 @@ Object.extend(Form.Methods,{
 Element.addMethods();
 
 
-
+// found this after a few google searches, there's probably a better one
+var EMAIL_ADDRESS_REGEX = /^([A-Za-z0-9]{1,}([-_\.&'][A-Za-z0-9]{1,}){0,}){1,}@(([A-Za-z0-9]{1,}[-]{0,1})\.){1,}[A-Za-z]{2,6}$/;
 
 Form.Validators = {
-
+  // Example
+  // passwordsMatch: function passwordsMatch(elements){
+  //   if(!this.password.getValue() == this.password_confirmation.getValue())
+  //     this.validationErrors().add('passwords must match');
+  // },
 };
-
-var EMAIL_ADDRESS_REGEX = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
 
 Form.Element.Validators = {
   isBlank: function isBlank(value){
