@@ -6,10 +6,6 @@
 
 
 var ValidationError = function(element, message){
-  if (!element || !message) {
-    console.warn(element, message);
-    console.trace();
-  }
   this.element = element;
   this.message = message+'';
 };
@@ -98,7 +94,7 @@ function validates(Type, element, validator){
   if (!Object.isFunction(validator))
     throw new Error('validator must be a function or a string');
 
-  element.validators().push(validator);
+  element.addValidator(validator);
   return element;
 }
 
@@ -107,8 +103,18 @@ Object.extend(Form.Element.Methods,{
     *
     * returns an array of the defined validators
     */
-  validators: function validators(element){
-    return element._validators || (element._validators = []);
+  addValidator: function addValidator(element, validator){
+    element.retrieve('_validators', []).push(validator);
+    return element;
+  },
+
+  /** FormElement#validators
+    *
+    * returns a clone of the validators array
+    */
+  removeValidator: function removeValidators(element, validator){
+    element.store('_validators', element.retrieve('_validators', []).without(validator));
+    return element;
   },
 
   /** FormElement#validates(validation | validation_name)
@@ -119,7 +125,7 @@ Object.extend(Form.Element.Methods,{
 
   validate: function(element){
     element.validationErrors().clear();
-    element.validators().invoke('call', element, element.getValue());
+    element.retrieve('_validators', []).invoke('call', element, element.getValue());
     element.fire(
       'form:element:validation:'+((element.validationErrors().size() < 1) ? 'success' : 'failure'),
       {element:element},
@@ -147,7 +153,9 @@ Object.extend(Form.Methods,{
     });
   },
 
-  validators: Form.Element.Methods.validators,
+
+  addValidator: Form.Element.Methods.addValidator,
+  removeValidator: Form.Element.Methods.removeValidator,
 
   validates: validates.curry(Form),
 
@@ -155,7 +163,7 @@ Object.extend(Form.Methods,{
     form.validationErrors().clear();
     var elements = form.getActiveElements();
     elements.invoke('isValid');
-    form.validators().invoke('call', form, elements);
+    form.retrieve('_validators', []).invoke('call', form, elements);
     form.fire(
       'form:validation:'+((form.validationErrors().size() < 1) ? 'success' : 'failure'),
       {form:form},

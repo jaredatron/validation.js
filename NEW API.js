@@ -1,4 +1,4 @@
-// 
+//
 
 
 $(element)
@@ -17,13 +17,17 @@ $(element).validity_is_cachable = true;
 // this really just means isValid() is going to run all the
 // validators each time it's called.
 
-$(element).isValid();
-// returns boolean
-// (caches )
+// this is essentially one time event observation
+$(element).validate({
+  onValid: function(element){
 
-$(element).validate();
+  },
+  onInvalid: function(element){
+
+  },
+});
 // returns element
- 
+
 $(element).validationErrors();
 // returns an Array of validation errors, if any
 
@@ -32,7 +36,7 @@ $(element).validationErrors().fullMessages();
 
 $(element).validationErrors().first().toString();
 // returns an String explaining the validation error
- 
+
 $(element).observe('validation:true', function(){ });
 $(element).observe('validation:false', function(){ });
 
@@ -61,13 +65,13 @@ $(element).observe('validation:display_state', function(event){
 
 $(element).setsValidAttributeOnLabelElement();
 $(element).doesntClearValidAttributeOnChange();
-// 
+//
 
 $(form).validatesOnSubmit();
 $(form).elements.validatesOnChange();
 $(form).elements.validatesOnBlur();
 
-$(form).elements.displaysValidation....
+// $(form).elements.displaysValidation....
 
 
 $(form).validationErrors();

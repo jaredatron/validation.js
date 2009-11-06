@@ -8,15 +8,10 @@ describe('Form',function(){
 
   afterEach(function(){
     form.validationErrors().clear();
-    form.validators.length = 0;
+    form.retrieve('_validators', []).length = 0;
     form.getElements().each(function(element){
-      element.validators().length = 0;
-    });
-  });
-
-  describe('#validators',function(){
-    it('should return an array',function(){
-      expect(Object.isArray(form.validators())).toEqual(true);
+      element.retrieve('_validators', []).length = 0;
+      element.setValue('');
     });
   });
 
@@ -24,13 +19,13 @@ describe('Form',function(){
     it('should accept a function and push it onto the validators array',function(){
       function something(){}
       form.validates(something);
-      expect(form.validators()).toContain(something);
+      expect(form.retrieve('_validators', [])).toContain(something);
     });
 
     it('should accept a string name of a function in Form.Validators',function(){
       Form.Validators.livesOnTheMoon = function(){};
       form.validates('livesOnTheMoon');
-      expect(form.validators()).toContain(Form.Validators.livesOnTheMoon);
+      expect(form.retrieve('_validators', [])).toContain(Form.Validators.livesOnTheMoon);
       delete Form.Validators.livesOnTheMoon;
     });
   });
@@ -101,12 +96,6 @@ describe('Form',function(){
       expect(contains_only_letters_run_count).toEqual(8);
       expect(form.validationErrors().size()).toEqual(0);
 
-      // cleanup
-      form.validators().length = 0;
-      form.an_input.validators().length = 0;
-      form.a_second_input.validators().length = 0;
-      form.an_input.setValue('');
-      form.a_second_input.setValue('');
     });
 
     it('should only take enabled form elements into account when validating',function(){
@@ -126,7 +115,6 @@ describe('Form',function(){
 
       //cleanup
       input.disabled = false;
-      input.validators.length = 0;
     });
 
     it('should only take visible form elements into account when validating',function(){
@@ -146,7 +134,6 @@ describe('Form',function(){
 
       //cleanup
       input.show();
-      input.validators.length = 0;
     });
   });
 
@@ -230,15 +217,14 @@ describe('Form',function(){
     input.validates('isBlank');
     form
       .observe('form:validation:success', function(event){
-        console.log('S', event.element());
         success_observer_called = true;
       })
       .observe('form:validation:failure', function(event){
-        console.log('f', event.element());
         failure_observer_called = true;
       });
 
 
+    input.setValue('');
     expect(form.isValid()).toBe(true);
     expect(success_observer_called).toBe(true);
     expect(failure_observer_called).toBe(false);

@@ -5,23 +5,17 @@ describe('FormElement', function () {
     form_element = new Element('input');
   });
 
-  describe('#validators',function(){
-    it('should return an array',function(){
-      expect(Object.isArray(form_element.validators())).toEqual(true);
-    });
-  });
-
   describe('#validates',function(){
     it('should accept a function and push it onto the validators array',function(){
       function something(){}
       form_element.validates(something);
-      expect(form_element.validators()).toContain(something);
+      expect(form_element.retrieve('_validators', [])).toContain(something);
     });
 
     it('should accept a string name of a function in Form.Element.Validations',function(){
       Form.Element.Validators.livesOnTheMoon = function(){};
       form_element.validates('livesOnTheMoon');
-      expect(form_element.validators()).toContain(Form.Element.Validators.livesOnTheMoon);
+      expect(form_element.retrieve('_validators', [])).toContain(Form.Element.Validators.livesOnTheMoon);
       delete Form.Element.Validators.livesOnTheMoon;
     });
   });
