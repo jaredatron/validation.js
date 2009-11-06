@@ -1,14 +1,35 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-  "http://www.w3.org/TR/html4/strict.dtd">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+  "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <head>
-  <script type="text/javascript" charset="utf-8" src="../lib/prototype.js"></script>
-  <script type="text/javascript" charset="utf-8" src="../src/validation.js"></script>
-  <script type="text/javascript" charset="utf-8" src="../lib/unittest.js"></script>
-  <link rel="stylesheet" href="../lib/unittest.css" type="text/css" />
-  <script type="text/javascript" charset="utf-8" src="validation_test.js"></script>
+  <title>Validations.js Test Runner</title>
 </head>
+<script type="text/javascript" src="../lib/jasmine-0.10.0.js"></script>
+<script type="text/javascript" src="../lib/TrivialReporter.js"></script>
+<script type="text/javascript" src="../lib/consolex.js"></script>
+<script type="text/javascript" src="../lib/prototype.js"></script>
+<script type="text/javascript" src="../src/validation.js"></script>
+<link rel="stylesheet" type="text/css" href="../lib/jasmine.css">
+
+<script type="text/javascript">
+  jasmine.include('spec/form_element_spec.js', true);
+  jasmine.include('spec/form_spec.js', true);
+</script>
+
 <body>
-  <div id="testlog"></div>
+
+  <form action="/" method="post">
+    <input name="usable" type="text">use me</input>
+    <input name="unusable" type="text" disabled>go away</input>
+  </form>
+
+<script type="text/javascript">
+  var jasmineEnv = jasmine.getEnv();
+  jasmineEnv.reporter = new jasmine.TrivialReporter();
+  jasmineEnv.execute();
+</script>
+
 </body>
 </html>
+
+
