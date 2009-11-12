@@ -44,8 +44,7 @@
       self.complete = false;
       self.timedout = false;
       self.element = element = $(element);
-      // self.validators = element.retrieve('_validators', []).clone();
-      self.validators = self.getValidators();
+      self.validators = element.retrieve('_validators', []).clone();
       if (!self.validators.length){
         self.onValid(self, self.element);
         self.onComplete(self, self.element);
@@ -64,6 +63,7 @@
       var self = this;
 
       self._errors = [];
+      self.value = self.element.getValue();
       
       self.validators.each(function(validator){
         function complete(){
@@ -81,29 +81,18 @@
           }
           self.onComplete(self, self.element);
         }
-        validator.call(self, complete); // TODO consider not defering here!
+        validator.call(self, self.value, complete); // TODO consider not defering here!
       });
       
       (function(){ // timeout handler
         if (!self.validators.length) return;
         self.complete = true;
         self.timedout = true;
-        self.onTimeout(self, self.validators.pluck('uncurried_validator'), self.element);
+        self.onTimeout(self, self.validators, self.element);
         self.onComplete(self, self.element);
       }).delay(self.timeout);
       
       // console.dir({FormElementValidation:self});
-    },
-    // returns the validators curried with the element's value
-    getValidators: function(){
-      this.value || (this.value = this.element.getValue());
-      var value = this.value, element = this.element;
-      return element.retrieve('_validators', []).map(function(validator){
-        curried_validator = validator.curry(value);
-        curried_validator.element = element;
-        curried_validator.uncurried_validator = validator;
-        return curried_validator;
-      });
     },
     addError: function(error){
       console.log('adding error for', this, error);
@@ -177,15 +166,6 @@
         
         
         
-      });
-    },
-    getValidators: function(){
-      this.value || (this.value = this.element.getValue());
-      var value = this.value;
-      return this.element.retrieve('_validators', []).map(function(validator){
-        curried_validator = validator.curry(value);
-        curried_validator.uncurried_validator = validator;
-        return curried_validator;
       });
     },
     addError: function(element, error){
