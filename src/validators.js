@@ -1,43 +1,53 @@
-(function() {
+Object.extend(Form.Element.Validators, (function() {
   
-  var validates = Form.Validators;
-  
-  validates['passwords match'] = function passwordMatch(values, complete){
-    if (values.password != values.password_confirmation) this.addError('passwords do not match');
-    complete();
-  }
-  
-})();
-
-(function() {
-  
-  var validates = Form.Element.Validators;
-  
-  validates['is blank'] = function isBlank(value, complete){
+  function isBlank(value, complete){
     if (!value.blank()) this.addError('must be blank');
     complete();
   };
   
-  validates['is not blank'] = function isNotBlank(value, complete){
+  function isNotBlank(value, complete){
       if (value.blank()) this.addError('cannot be blank');
       complete();
     };
     
-  validates['is checked'] = function isChecked(checked, complete){
+  function isChecked(checked, complete){
     if (!checked) this.addError('must be checked');
     complete();
   };
   
-  validates['is not checked'] = function isNotChecked(checked, complete){
+  function isNotChecked(checked, complete){
     if (!!checked) this.addError('cannot be checked');
     complete();
   };
 
-  Form.Element.Validators['is an email address'] = function isEmailAddress(value, complete){
+  var EMAIL_ADDRESS_REGEX = /^([A-Za-z0-9]{1,}([-_\.&'][A-Za-z0-9]{1,}){0,}){1,}@(([A-Za-z0-9]{1,}[-]{0,1})\.){1,}[A-Za-z]{2,6}$/;
+  function isAnEmailAddress(value, complete){
     if (!EMAIL_ADDRESS_REGEX.test(value))
       this.addError('must be a valid email address');
     complete();
   };
   
   
-})();
+  return {
+    'is blank'            : isBlank,
+    'is not blank'        : isNotBlank,
+    'is checked'          : isChecked,
+    'is not checked'      : isNotChecked,
+    'is an email address' : isAnEmailAddress
+  };
+  
+  
+})());
+
+Object.extend(Form.Validators, (function() {
+
+  function passwordsMatch(values, complete){
+    if (values.password != values.password_confirmation) this.addError('passwords do not match');
+    complete();
+  }
+  
+  return {
+    'passwords match': passwordsMatch
+  };
+  
+})());

@@ -7,7 +7,7 @@
       if (validator in validators){
         validator = validators[validator];
       }else{
-        throw new TypeError('unable to find validator named "'+validator+'"');
+        throw new TypeError('unable to find validator named "'+validator+'"', validators);
       }
     }
 
@@ -87,7 +87,10 @@
       self.onComplete(self, self.element);
       self.element.fire('validation:'+result,{element:self.element, errors:self.errors});
       self.element.fire('validation:complete',{element:self.element, errors:self.errors});
-    }
+    },
+    isValid: function(){
+      return !this.hasErrors();
+    },
   });
   
   
@@ -103,7 +106,6 @@
       });
       
       self.setupTimeoutHandler();
-      console.dir({FormElementValidation:self});
     },
     addError: function(error){
       this.errors.push(error);
@@ -165,7 +167,6 @@
       });
       
       self.setupTimeoutHandler();
-      console.dir({FormValidation:self});
     },
     addError: function(error){
       this.errors.on(this.element).push(error);
@@ -175,8 +176,6 @@
       return this.errors.pluck(1).pluck('length').any();
     }
   });
-  
-  
   
   
   Element.addMethods();

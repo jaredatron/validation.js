@@ -1,21 +1,25 @@
+describe('[identical specs]', function(){
+
+// we needed a validator for forms and form elements that had the same name
 Form.Element.Validators['example validator'] = Form.Validators['example validator'] = function exampleValidator(){};
 
-['form','input'].each(function(type){
-  
-  describe(type+'.validation', function(){
-  
+
+['Form','Input'].each(function(type){
+
+  describe(type, function(){
+
     var element;
-  
+
     beforeEach(function(){
       element = new Element(type);
     });
-    
+
     describe('#validators', function(){
       it('should return an array', function(){
         expect(element.validators()).toBeAnInstanceOf(Array);
       });
     });
-    
+
     describe('#validates', function(){
 
       it('should take a function and push it onto the stack of validators', function(){
@@ -39,7 +43,7 @@ Form.Element.Validators['example validator'] = Form.Validators['example validato
       });
 
     });
-    
+
     describe('#validate', function(){
       var on_valid_called, on_invalid_called, on_timeout_called, on_complete_called;
       var validate_watchers = {
@@ -52,6 +56,7 @@ Form.Element.Validators['example validator'] = Form.Validators['example validato
       beforeEach(function () {
         on_valid_called = on_invalid_called = on_timeout_called = on_complete_called = false;
       });
+
 
 
       it('should run each validator', function(){
@@ -128,30 +133,6 @@ Form.Element.Validators['example validator'] = Form.Validators['example validato
         });
       });
 
-
-      // NEEDS TO BE FORM/ELEMENT SPECIFIC
-      // it('should pass and array of errors to onInvalid', function(){
-      //   element.validates(function isNotBlank(value, complete){
-      //     this.addError('is invalid');
-      //     complete();
-      //   });
-      //   var element_errors;
-      //   runs(function(){
-      //     element.validate({
-      //       onInvalid: function(validator, errors, element){
-      //         on_invalid_called = true;
-      //         element_errors = errors;
-      //       }
-      //     });
-      //   });
-      //   waits(1);
-      //   runs(function(){
-      //     expect(on_invalid_called).toEqual(true);
-      //     expect(element_errors).toBeAnInstanceOf(Array);
-      //     expect(element_errors[0]).toEqual('is invalid');
-      //   });
-      // });
-
       it('should not call callbacks until all validations have completed', function(){
         validate_watchers.timeout = 0.5; //second
 
@@ -190,8 +171,6 @@ Form.Element.Validators['example validator'] = Form.Validators['example validato
           .observe('validation:success', function(event){
             validation_success_fired++;
           });
-          
-          
 
         runs(function(){
           validation_failure_fired = validation_success_fired = 0;
@@ -259,7 +238,8 @@ Form.Element.Validators['example validator'] = Form.Validators['example validato
       });
 
     });
-  
+
   });
-  
+});
+
 });
