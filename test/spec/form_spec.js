@@ -2,8 +2,18 @@ describe('Form',function(){
   var form, input;
 
   beforeEach(function(){
-    form = $('a_form');
-    input = $('an_input');
+    // form = $('a_form');
+    // input = $('an_input');
+    
+    form = new Element('form');
+    form.id = 'a_form';
+    input = new Element('input');
+    input.id = input.name = 'an_input';
+    form.appendChild(input);
+
+    expect(form.validationInProgress()).toEqual(false);
+    expect(input.validationInProgress()).toEqual(false);
+    
   });
 
   afterEach(function(){
@@ -28,7 +38,9 @@ describe('Form',function(){
       expect(form.retrieve('_validators', [])).toContain(Form.Validators.livesOnTheMoon);
       delete Form.Validators.livesOnTheMoon;
     });
+  });
 
+  describe('#valudate',function(){
     it('should accept onValid and onInvalid callbacks in a hash',function(){
       input.validates('isNotBlank');
       var is_valid, on_complete_called_with;
@@ -66,6 +78,70 @@ describe('Form',function(){
         expect(on_complete_called_with).toEqual('valid');
       });
     });
+    
+    it('should wait for ajax calls to complete',function(){
+      var ajax_request_made = ajax_responce_recieved = validate_callback_called = false;
+      
+      form.validates(function simulatedRemoteValidations(serialized_form, form, validationComplete){
+        // simulating ajax call by delaying
+        ajax_request_made = true;
+        (function() {
+          ajax_responce_recieved = true;
+          form.validationErrors().add('some base error');
+          form.an_input.validationErrors().add('some input specific error');
+          validationComplete();
+        }).delay(1);
+
+      });
+      
+      runs(function(){
+        form.validate(function(){
+          validate_callback_called = true;
+        });
+      });
+      waits(100);
+      runs(function(){
+        expect(form.validationInProgress()).toEqual(true);
+        expect(ajax_request_made).toEqual(true);
+        expect(ajax_responce_recieved).toEqual(false);
+        expect(validate_callback_called).toEqual(false);
+        expect(form.validationErrors().size()).toEqual(0);
+      });
+      waits(1500);
+      runs(function(){
+        expect(form.validationInProgress()).toEqual(false);
+        expect(ajax_responce_recieved).toEqual(true);
+        expect(validate_callback_called).toEqual(true);
+        expect(form.validationErrors().size()).toEqual(2);
+      });
+    });
+    
+    it('should timeout if all validators do not complete within X seconds',function(){
+      form
+        .validates(function brokenValidator(){
+          console.log('broken_validator_was_fired');
+        })
+        .validates(function addsAnErrorCorrectly(serialized_form, form, validationComplete){
+          console.info('adding an error to form',form);
+          form.validationErrors().add('i work correctly');
+          validationComplete();
+        });
+      
+      runs(function(){
+        form.validate(function(){
+          console.info('validate callback called');
+        });
+      });
+      waits(100);
+      runs(function(){
+        expect(form.validationErrors().size()).toEqual(1);
+      });
+      waits(1105);
+      runs(function(){
+        expect(form.validationErrors().size()).toEqual(1);
+      });
+    });
+    
   });
 
   // describe('#isValid',function(){
@@ -246,11 +322,11 @@ describe('Form',function(){
         runs(function(){
           form.validate({
             onComplete: function(is_valid, form){
-              error_message = form.validationErrors().fullMessages().first()
+              error_message = form.validationErrors().fullMessages().first();
             }
           });
-        })
-        waits(110)
+        });
+        waits(110);
         runs(function(){
           expect(error_message).toEqual('an input cannot be blank');
         });
@@ -309,4 +385,5 @@ describe('Form',function(){
       expect(failure_observer_called).toBe(1);
     });
   });
+  
 });

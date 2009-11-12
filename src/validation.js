@@ -64,6 +64,8 @@ Form.ValidationErrors = Class.create(Form.Element.ValidationErrors,{
     return this;
   },
   clear: function(){
+    console.log('----- clearing form validation errors');
+    // console.trace();
     this.errors.length = 0;
     this.element.getActiveElements().each(function(element){
       element.validationErrors().clear();
@@ -108,13 +110,12 @@ function validates(Type, element, validator){
 // so they can be called asyncronously.
 function validatorsFor(element){
   if (element.nodeName === 'FORM'){ // TODO this optomize this later
-    var validators = []; element_values = {};
+    var validators = []; serialized_form = element.serialize(true);
     element.getActiveElements().each(function(form_element){
       [].push.apply(validators, validatorsFor(form_element));
-      element_values[form_element.name] = form_element.getValue();
     });
     element.retrieve('_validators', []).map(function(validator){
-      validators.push(validator.bind(element).curry(element_values, element));
+      validators.push(validator.bind(element).curry(serialized_form, element));
     });
     return validators;
   }else{
@@ -124,30 +125,39 @@ function validatorsFor(element){
   }
 }
 
-function callValidatorsFor(element, callback){
+function callValidatorsFor(element, callbacks){
   var validators = validatorsFor(element), timedout = false;
 
   if (!validators.length){
-    if (callback) callback(element);
+    callbacks.onComplete(element);
+    callbacks.onSuccess(element);
     return;
   }
-
-  function validatorComplete(validator){
-    if (timedout) return console.warn('validatorComplete called after timeout');
-    validators = validators.without(validator);
-    if (validators.length) return;
-    if (callback) callback(element);
-  }
-  validators.clone().each(function(validator){
-    validator(validatorComplete.curry(validator));
-  });
-  //TODO add timeout mechanism here
-
-  (function(){
-    timedout = true;
+  
+  (function(){ // timeout handler
     if (!validators.length) return;
-    if (callback) callback(element);
+    timedout = true;
+    callbacks.onComplete(element);
+    callbacks.onTimeout(validators);
+    console.warn('validators timed out for', element);
+    throw new Error('validators timed out');
+    // if (callback) callback(element);
   }).delay(10);
+
+  validators.clone().each(function(validator){
+    function validatorComplete(){
+      if (timedout) return console.warn('validatorComplete called after timeout');
+
+      validators = validators.without(validator);
+      
+      if (!validators.length){ // complete
+        callbacks.onComplete(element);
+        callbacks.onSuccess(element);
+      }
+    }
+    validator(validatorComplete);
+  });
+
 
 }
 
@@ -201,20 +211,36 @@ Object.extend(Form.Element.Methods,{
     *   onComplete: function(){},
     *   onValid: function(){},
     *   onInvalid: function(){},
+    *   onTimeout: function(){}
     * });
     *
     */
   validate: function(element, callbacks){
     if (Object.isFunction(callbacks)) callbacks = {onComplete:callbacks};
     element.validationErrors().clear();
-    callValidatorsFor(element, function(){
-      fireEventsFor(element, callbacks);
+    if (element.retrieve('_validation_in_progress')) throw new Error('Element validations running in tandum is not recommended!');
+    element.store('_validation_in_progress', true);
+
+    callValidatorsFor(element, {
+      onComplete: function(){
+        element.store('_validation_in_progress', false);
+      },
+      onSuccess: function(){
+        fireEventsFor(element, callbacks);
+      },
+      onTimeout: function(validators){
+        callbacks.onTimeout(element, validators);
+      }
     });
     return element;
   },
+  
+  validationInProgress: function(element){
+    return !!element.retrieve('_validation_in_progress');
+  },
 
   validationErrors: function validationErrors(element){
-    return element._validation_errors || (element._validation_errors = new Form.Element.ValidationErrors(element));
+    return element.retrieve('_validationErrors') || element.retrieve('_validationErrors', new Form.Element.ValidationErrors(element));
   }
 
 });
@@ -231,8 +257,9 @@ Object.extend(Form.Methods,{
   removeValidator: Form.Element.Methods.removeValidator,
   validates: validates.curry(Form),
   validate: Form.Element.Methods.validate,
+  validationInProgress: Form.Element.Methods.validationInProgress,
   validationErrors: function validationErrors(form){
-    return form._validation_errors || (form._validation_errors = new Form.ValidationErrors(form));
+    return form.retrieve('_validationErrors') || form.retrieve('_validationErrors', new Form.ValidationErrors(form));
   }
 });
 
@@ -249,7 +276,26 @@ Form.Validators = {
   //   if(!this.password.getValue() == this.password_confirmation.getValue())
   //     this.validationErrors().add('passwords must match');
   // },
+  
+
 };
+
+
+// TODO
+
+remove validationErrors().add and pass in stop passing in a validationComplete method instead do this
+
+function exampleAsyncValidator(value, validation){
+  new Ajax.Request('username_available',{
+    onComplete: function(){
+      validation.complete();
+    },
+    onFailure: function(response) {
+      validation.addError('is already taken');
+    }
+  });
+}
+
 
 Form.Element.Validators = {
   isBlank: function isBlank(value, element, validationComplete){

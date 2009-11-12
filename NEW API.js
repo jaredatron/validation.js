@@ -40,7 +40,7 @@ $(element).validationErrors().first().toString();
 $(element).observe('validation:true', function(){ });
 $(element).observe('validation:false', function(){ });
 
-'<input validations="is_not_blank contains_only_numbers"></input>';
+'<input validation="is_not_blank contains_only_numbers"></input>';
 //validations can be defined inline
 
 
