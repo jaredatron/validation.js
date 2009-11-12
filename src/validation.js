@@ -54,6 +54,32 @@
     },
     errors: function(){
       return this._errors;
+    },
+    setupTimeoutHandler: function(){
+      var self = this;
+      (function(){ // timeout handler
+        if (!self.validators.length) return;
+        self.complete = true;
+        self.timedout = true;
+        self.onTimeout(self, self.validators, self.element);
+        self.onComplete(self, self.element);
+      }).delay(self.timeout);
+    },
+    completeValidation: function(validator){
+      var self = this;
+      if (self.complete) throw new Error('validator called complete after validation completed');
+      if (!self.validators.include(validator)) throw new Error('validator called complete twice');
+
+      self.validators = self.validators.without(validator);
+      if (self.validators.length) return;
+      if (self.errors().length){
+        self.onInvalid(self, self.errors(), self.element);
+        self.element.fire('validation:failure',{element:self.element, errors:self.errors()});
+      }else{
+        self.onValid(self, self.element);
+        self.element.fire('validation:success',{element:self.element});
+      }
+      self.onComplete(self, self.element);
     }
   });
   
@@ -66,36 +92,13 @@
       self.value = self.element.getValue();
       
       self.validators.each(function(validator){
-        function complete(){
-          if (self.complete) throw new Error('validator called complete after validation completed');
-          if (!self.validators.include(validator)) throw new Error('validator called complete twice');
-
-          self.validators = self.validators.without(validator);
-          if (self.validators.length) return;
-          if (self.errors().length){
-            self.onInvalid(self, self.errors(), self.element);
-            self.element.fire('validation:failure',{element:self.element, errors:self.errors()});
-          }else{
-            self.onValid(self, self.element);
-            self.element.fire('validation:success',{element:self.element});
-          }
-          self.onComplete(self, self.element);
-        }
-        validator.call(self, self.value, complete); // TODO consider not defering here!
+        validator.call(self, self.value, self.completeValidation.bind(self).curry(validator));
       });
       
-      (function(){ // timeout handler
-        if (!self.validators.length) return;
-        self.complete = true;
-        self.timedout = true;
-        self.onTimeout(self, self.validators, self.element);
-        self.onComplete(self, self.element);
-      }).delay(self.timeout);
-      
-      // console.dir({FormElementValidation:self});
+      self.setupTimeoutHandler();
+      console.dir({FormElementValidation:self});
     },
     addError: function(error){
-      console.log('adding error for', this, error);
       this._errors.push(error);
       return this;
     }
@@ -122,54 +125,40 @@
   }
   FormValidationErrors.prototype = {
     on: function(element){
-      return this.find(function(record){ return record[0] === element; })[1];
+      var record = this.find(function(record){ return record[0] === element; })
+      if (record) return record[1];
     }
   };
-  
   
   var FormValidation = Class.create(Validation, {
     run: function() {
       var self = this;
       
       self._errors = new FormValidationErrors;
-      // self._errors.push([element,[]]);
+      self._errors.push([self.element,[]]);
       
+      self.values = {};
       self.elements = self.element.getActiveElements();
       self.elements.each(function(element){
+        self.values[element.name] = element.getValue();
         self.errors().push([element, []]);
-        // element.validate({
-        //   timeout: self.timeout,
-        //   onComplete: function(validation, element){
-        //     [].push.apply(self.errors().on(validation.element), validation.errors())
-        //   }
-        // });
-        
-        
-        element.validators.each(function(validator){
-          function complete(){
-            if (self.complete) throw new Error('validator called complete after validation completed');
-            if (!self.validators.include(validator)) throw new Error('validator called complete twice');
-
-            self.validators = self.validators.without(validator);
-            if (self.validators.length) return;
-            if (self.errors().length){
-              self.onInvalid(self, self.errors(), self.element);
-              self.element.fire('validation:failure',{element:self.element, errors:self.errors()});
-            }else{
-              self.onValid(self, self.element);
-              self.element.fire('validation:success',{element:self.element});
-            }
-            self.onComplete(self, self.element);
+        element.validate({
+          timeout: self.timeout,
+          onComplete: function(validation, element){
+            [].push.apply(self.errors().on(validation.element), validation.errors());
           }
-          validator.call(self, self.value, complete); // TODO consider not defering here!
         });
-        
-        
-        
       });
+      
+      self.validators.each(function(validator){
+        validator.call(self, self.values, self.completeValidation.bind(self).curry(validator));
+      });
+      
+      self.setupTimeoutHandler();
+      console.dir({FormValidation:self});
     },
-    addError: function(element, error){
-      this.errors().on(element).push(error);
+    addError: function(error){
+      this.errors().on(this.element).push(error);
       return this;
     }
   });

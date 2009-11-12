@@ -58,7 +58,7 @@ describe('Form',function(){
 
 
     it('should run each validator', function(){
-      var first_validator, second_validator;
+      var first_validator, second_validator, third_validator, fourth_validator;
       form
         .validates(function firstValidator(value, complete){
           first_validator = true;
@@ -68,16 +68,63 @@ describe('Form',function(){
           second_validator = true;
           complete();
         });
+      
+      form.password
+        .validates(function thirdValidator(value, complete){
+          third_validator = true;
+          complete();
+        });
+        
+      form.password_confirmation
+        .validates(function fourthValidator(value, complete){
+          fourth_validator = true;
+          complete();
+        });
 
       runs(function(){
+        first_validator = second_validator = third_validator = fourth_validator = false;
         form.validate();
       });
       waits(1);
       runs(function(){
         expect(first_validator).toEqual(true);
         expect(second_validator).toEqual(true);
+        expect(third_validator).toEqual(true);
+        expect(fourth_validator).toEqual(true);
       });
     });
+    
+    it('should collect errors for the form and it\'s active elements', function(){
+      form.validates(function(value, complete){
+        this.addError('must not suck');
+        complete();
+      })
+    
+      form.password.validates(function(value, complete){
+        this.addError('must not be a crappy password');
+        complete();
+      });
+      
+      form.password_confirmation.validates(function(value, complete){
+        this.addError('must not be a copy of a crappy password');
+        complete();
+      });
+      
+      var validation_errors;
+      runs(function(){
+        form.validate({
+          onComplete: function(validation){
+            validation_errors = validation.errors();
+          },
+        });
+      });
+      waits(1);
+      runs(function(){
+        expect(validation_errors.on(form)[0]).toEqual('must not suck');
+        expect(validation_errors.on(form.password)[0]).toEqual('must not be a crappy password');
+        expect(validation_errors.on(form.password_confirmation)[0]).toEqual('must not be a copy of a crappy password');
+      });
+    })
     
   });
   
