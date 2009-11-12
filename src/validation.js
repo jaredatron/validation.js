@@ -47,13 +47,11 @@
       self.validators = element.retrieve('_validators', []).clone();
       if (!self.validators.length){
         self.onValid(self, self.element);
+        self.element.fire('validation:success',{element:self.element});
         self.onComplete(self, self.element);
         return;
       }
       self.run();
-    },
-    errors: function(){
-      return this._errors;
     },
     setupTimeoutHandler: function(){
       var self = this;
@@ -63,23 +61,32 @@
         self.timedout = true;
         self.onTimeout(self, self.validators, self.element);
         self.onComplete(self, self.element);
+        self.element.fire('validation:timeout',{element:self.element});
       }).delay(self.timeout);
     },
-    completeValidation: function(validator){
+    validatorComplete: function(validator){
       var self = this;
       if (self.complete) throw new Error('validator called complete after validation completed');
       if (!self.validators.include(validator)) throw new Error('validator called complete twice');
 
       self.validators = self.validators.without(validator);
-      if (self.validators.length) return;
-      if (self.errors().length){
-        self.onInvalid(self, self.errors(), self.element);
-        self.element.fire('validation:failure',{element:self.element, errors:self.errors()});
+      if (!self.validators.length) self.completeValidation();
+    },
+    
+    completeValidation: function(validator){
+      var self = this;
+      // Validation complete
+      if (self.hasErrors()){
+        self.onInvalid(self, self.errors, self.element);
+        self.onComplete(self, self.element);
+        result = 'failure';
       }else{
         self.onValid(self, self.element);
-        self.element.fire('validation:success',{element:self.element});
+        result = 'success';
       }
       self.onComplete(self, self.element);
+      self.element.fire('validation:'+result,{element:self.element, errors:self.errors});
+      self.element.fire('validation:complete',{element:self.element, errors:self.errors});
     }
   });
   
@@ -88,19 +95,22 @@
     run: function() {
       var self = this;
 
-      self._errors = [];
+      self.errors = [];
       self.value = self.element.getValue();
       
       self.validators.each(function(validator){
-        validator.call(self, self.value, self.completeValidation.bind(self).curry(validator));
+        validator.call(self, self.value, self.validatorComplete.bind(self).curry(validator));
       });
       
       self.setupTimeoutHandler();
       console.dir({FormElementValidation:self});
     },
     addError: function(error){
-      this._errors.push(error);
+      this.errors.push(error);
       return this;
+    },
+    hasErrors: function(){
+      return !!this.errors.length;
     }
   });
   
@@ -125,7 +135,7 @@
   }
   FormValidationErrors.prototype = {
     on: function(element){
-      var record = this.find(function(record){ return record[0] === element; })
+      var record = this.find(function(record){ return record[0] === element; });
       if (record) return record[1];
     }
   };
@@ -134,32 +144,35 @@
     run: function() {
       var self = this;
       
-      self._errors = new FormValidationErrors;
-      self._errors.push([self.element,[]]);
+      self.errors = new FormValidationErrors;
+      self.errors.push([self.element,[]]);
       
       self.values = {};
       self.elements = self.element.getActiveElements();
       self.elements.each(function(element){
         self.values[element.name] = element.getValue();
-        self.errors().push([element, []]);
+        self.errors.push([element, []]);
         element.validate({
           timeout: self.timeout,
           onComplete: function(validation, element){
-            [].push.apply(self.errors().on(validation.element), validation.errors());
+            [].push.apply(self.errors.on(validation.element), validation.errors);
           }
         });
       });
       
       self.validators.each(function(validator){
-        validator.call(self, self.values, self.completeValidation.bind(self).curry(validator));
+        validator.call(self, self.values, self.validatorComplete.bind(self).curry(validator));
       });
       
       self.setupTimeoutHandler();
       console.dir({FormValidation:self});
     },
     addError: function(error){
-      this.errors().on(this.element).push(error);
+      this.errors.on(this.element).push(error);
       return this;
+    },
+    hasErrors: function(){
+      return this.errors.pluck(1).pluck('length').any();
     }
   });
   
