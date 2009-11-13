@@ -35,6 +35,44 @@ describe('Input', function () {
       });
     });
     
+    it('should fire validation events', function(){
+      var validation_failure_fired, validation_success_fired, is_valid;
+
+      input
+        .validates(function depends(value, complete){
+          if (!is_valid) this.addError('is invalid');
+          complete();
+        })
+        .observe('validation:failure', function(event){
+          validation_failure_fired++;
+        })
+        .observe('validation:success', function(event){
+          validation_success_fired++;
+        });
+
+      runs(function(){
+        validation_failure_fired = validation_success_fired = 0;
+        is_valid = false;
+        input.validate();
+      });
+      waits(1);
+      runs(function(){
+        expect(validation_failure_fired).toEqual(1);
+        expect(validation_success_fired).toEqual(0);
+      });
+      waits(1);
+      runs(function(){
+        validation_failure_fired = validation_success_fired = 0;
+        is_valid = true;
+        input.validate();
+      });
+      waits(1);
+      runs(function(){
+        expect(validation_failure_fired).toEqual(0);
+        expect(validation_success_fired).toEqual(1);
+      });
+    });
+    
   });
   
 });

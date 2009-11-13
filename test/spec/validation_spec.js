@@ -137,7 +137,7 @@ Form.Element.Validators['example validator'] = Form.Validators['example validato
         validate_watchers.timeout = 0.5; //second
 
         element.validates(function slowValidator(value, complete){
-          complete.delay(0.5);
+          complete.delay(0.25);
         });
 
         runs(function(){
@@ -147,53 +147,13 @@ Form.Element.Validators['example validator'] = Form.Validators['example validato
         runs(function(){
           expect(on_complete_called).toEqual(false);
         });
-        waits(100);
-        runs(function(){
-          expect(on_complete_called).toEqual(false);
-        });
         waits(500);
         runs(function(){
           expect(on_complete_called).toEqual(true);
         });
       });
 
-      it('should fire validation events', function(){
-        var validation_failure_fired, validation_success_fired, is_valid;
 
-        element
-          .validates(function depends(value, complete){
-            if (!is_valid) this.addError('is invalid');
-            complete();
-          })
-          .observe('validation:failure', function(event){
-            validation_failure_fired++;
-          })
-          .observe('validation:success', function(event){
-            validation_success_fired++;
-          });
-
-        runs(function(){
-          validation_failure_fired = validation_success_fired = 0;
-          is_valid = false;
-          element.validate();
-        });
-        waits(1);
-        runs(function(){
-          expect(validation_failure_fired).toEqual(1);
-          expect(validation_success_fired).toEqual(0);
-        });
-        waits(1);
-        runs(function(){
-          validation_failure_fired = validation_success_fired = 0;
-          is_valid = true;
-          element.validate();
-        });
-        waits(1);
-        runs(function(){
-          expect(validation_failure_fired).toEqual(0);
-          expect(validation_success_fired).toEqual(1);
-        });
-      });
 
       describe('\'s complete handler', function(){
 

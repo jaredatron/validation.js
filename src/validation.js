@@ -40,17 +40,13 @@
     onComplete: Prototype.emptyFunction,
     initialize: function(element, options) {
       var self = this;
+      
+      self.UUID = new Date().getTime();
       Object.extend(self,options);
       self.complete = false;
       self.timedout = false;
       self.element = element = $(element);
       self.validators = element.retrieve('_validators', []).clone();
-      if (!self.validators.length){
-        self.onValid(self, self.element);
-        self.element.fire('validation:success',{element:self.element});
-        self.onComplete(self, self.element);
-        return;
-      }
       self.run();
     },
     setupTimeoutHandler: function(){
@@ -61,7 +57,7 @@
         self.timedout = true;
         self.onTimeout(self, self.validators, self.element);
         self.onComplete(self, self.element);
-        self.element.fire('validation:timeout',{element:self.element});
+        self.fire('timeout');
       }).delay(self.timeout);
     },
     validatorComplete: function(validator){
@@ -74,29 +70,41 @@
     },
     
     completeValidation: function(validator){
-      var self = this;
-      // Validation complete
-      if (self.hasErrors()){
-        self.onInvalid(self, self.errors, self.element);
-        self.onComplete(self, self.element);
-        result = 'failure';
-      }else{
-        self.onValid(self, self.element);
-        result = 'success';
-      }
-      self.onComplete(self, self.element);
-      self.element.fire('validation:'+result,{element:self.element, errors:self.errors});
-      self.element.fire('validation:complete',{element:self.element, errors:self.errors});
+      return this.hasErrors() ? this.validationFailure() : this.validationSuccess();
+    },
+    validationSuccess: function(){
+      this.onValid(this, this.element);
+      this.onComplete(this, this.element);
+      this.fire('success');
+      this.fire('complete');
+      return this;
+    },
+    validationFailure: function(){
+      this.onInvalid(this, this.errors, this.element);
+      this.onComplete(this, this.element);
+      this.fire('failure');
+      this.fire('complete');
+      return this;
     },
     isValid: function(){
       return !this.hasErrors();
     },
+    event_prefix:'validation',
+    fire: function(event){
+      this.element.fire(this.event_prefix+':'+event,{
+        validation: this,
+        element:this.element
+      });
+      return this;
+    }
   });
   
   
   var FormElementValidation = Class.create(Validation, {
     run: function() {
       var self = this;
+
+      if (!self.validators.length) return self.validationSuccess();
 
       self.errors = [];
       self.value = self.element.getValue();
@@ -146,19 +154,29 @@
     run: function() {
       var self = this;
       
+      self.elements = self.element.getActiveElements();
+
+      if (!self.validators.length && !self.elements.length) return self.validationSuccess();
+      
       self.errors = new FormValidationErrors;
       self.errors.push([self.element,[]]);
       
       self.values = {};
-      self.elements = self.element.getActiveElements();
+      // store the values of each element and create a form validator
+      // for the validation of each child element
       self.elements.each(function(element){
         self.values[element.name] = element.getValue();
         self.errors.push([element, []]);
-        element.validate({
-          timeout: self.timeout,
-          onComplete: function(validation, element){
-            [].push.apply(self.errors.on(validation.element), validation.errors);
-          }
+        
+        self.validators.push(function elementIsValid(values, complete){
+          element.validate({
+            UUID: self.UUID+'-child',
+            timeout: self.timeout,
+            onComplete: function(validation){
+              self.addErrorsOn(element, validation.errors);
+              complete();
+            }
+          });
         });
       });
       
@@ -168,8 +186,17 @@
       
       self.setupTimeoutHandler();
     },
+    event_prefix:'form:validation',
     addError: function(error){
       this.errors.on(this.element).push(error);
+      return this;
+    },
+    addErrorOn: function(element, error){
+      this.errors.on(element).push(error);
+      return this;
+    },
+    addErrorsOn: function(element, errors){
+      Array.prototype.push.apply(this.errors.on(element), errors);
       return this;
     },
     hasErrors: function(){

@@ -1,4 +1,4 @@
-describe('Form.Element.Validators',function(){
+describe('Form.Validators',function(){
   var form, password, password_confirmation;
 
   beforeEach(function(){
