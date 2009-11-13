@@ -26,13 +26,13 @@
     },
     validates: validates.curry(Form.Element.Validators),
     validate: function(element, options){
-      new FormElementValidation(element, options);
+      new FormElementValidation(element, options).run();
       return element;
     }
   });
   
   
-  var Validation = Class.create({
+  var FormElementValidation = Class.create({
     timeout:    10, // seconds
     onValid:    Prototype.emptyFunction,
     onInvalid:  Prototype.emptyFunction,
@@ -40,21 +40,35 @@
     onComplete: Prototype.emptyFunction,
     initialize: function(element, options) {
       var self = this;
-      
       self.UUID = new Date().getTime();
+      
       Object.extend(self,options);
-      self.complete = false;
-      self.timedout = false;
-      self.element = element = $(element);
-      self.validators = element.retrieve('_validators', []).clone();
-      self.run();
+      self.is_complete = false;
+      self.errors = [];
+      self.element = $(element);
     },
-    setupTimeoutHandler: function(){
+    collectValidators: function(){
+      this.validators = this.element.retrieve('_validators', []).clone();
+      return this;
+    },
+    value: function(){
+      this._value || (this._value = this.element.getValue());
+      return this._value;
+    },
+    run: function(){
       var self = this;
+      self.collectValidators();
+      if (!self.validators.length) return self.completeSuccessfully();
+      
+      self.validators.clone().each(function(validator){
+        validator.call(self, self.value(), function complete(){
+          self.validatorComplete(validator);
+        });
+      });
+
       (function(){ // timeout handler
         if (!self.validators.length) return;
-        self.complete = true;
-        self.timedout = true;
+        self.is_complete = true;
         self.onTimeout(self, self.validators, self.element);
         self.onComplete(self, self.element);
         self.fire('timeout');
@@ -62,33 +76,43 @@
     },
     validatorComplete: function(validator){
       var self = this;
-      if (self.complete) throw new Error('validator called complete after validation completed');
+      if (self.is_complete) throw new Error('validator called complete after validation completed');
       if (!self.validators.include(validator)) throw new Error('validator called complete twice');
 
       self.validators = self.validators.without(validator);
-      if (!self.validators.length) self.completeValidation();
+      if (!self.validators.length) self.complete();
     },
     
-    completeValidation: function(validator){
-      return this.hasErrors() ? this.validationFailure() : this.validationSuccess();
+    addError: function(error){
+      this.errors.push(error);
+      return this;
     },
-    validationSuccess: function(){
+    hasErrors: function(){
+      return !!this.errors.length;
+    },
+
+    isValid: function(){
+      return !this.hasErrors();
+    },    
+
+    complete: function(validator){
+      return this.isValid() ? this.completeSuccessfully() : this.completeUnsuccessfully();
+    },
+    completeSuccessfully: function(){
       this.onValid(this, this.element);
       this.onComplete(this, this.element);
       this.fire('success');
       this.fire('complete');
       return this;
     },
-    validationFailure: function(){
+    completeUnsuccessfully: function(){
       this.onInvalid(this, this.errors, this.element);
       this.onComplete(this, this.element);
       this.fire('failure');
       this.fire('complete');
       return this;
     },
-    isValid: function(){
-      return !this.hasErrors();
-    },
+    
     event_prefix:'validation',
     fire: function(event){
       this.element.fire(this.event_prefix+':'+event,{
@@ -97,31 +121,7 @@
       });
       return this;
     }
-  });
-  
-  
-  var FormElementValidation = Class.create(Validation, {
-    run: function() {
-      var self = this;
 
-      if (!self.validators.length) return self.validationSuccess();
-
-      self.errors = [];
-      self.value = self.element.getValue();
-      
-      self.validators.each(function(validator){
-        validator.call(self, self.value, self.validatorComplete.bind(self).curry(validator));
-      });
-      
-      self.setupTimeoutHandler();
-    },
-    addError: function(error){
-      this.errors.push(error);
-      return this;
-    },
-    hasErrors: function(){
-      return !!this.errors.length;
-    }
   });
   
   
@@ -134,7 +134,7 @@
     validators: Form.Element.Methods.validators,
     validates:  validates.curry(Form.Validators),
     validate: function(element, options){
-      new FormValidation(element, options);
+      new FormValidation(element, options).run();
       return element;
     }
   });
@@ -150,24 +150,28 @@
     }
   };
   
-  var FormValidation = Class.create(Validation, {
-    run: function() {
+  var FormValidation = Class.create(FormElementValidation, {
+    initialize: function($super, element, options) {
       var self = this;
-      
-      self.elements = self.element.getActiveElements();
-
-      if (!self.validators.length && !self.elements.length) return self.validationSuccess();
-      
-      self.errors = new FormValidationErrors;
+      $super(element, options);
+      self.errors = new FormValidationErrors();
       self.errors.push([self.element,[]]);
+    },
+    value: function(){
+      this._value || (this._value = {});
+      return this._value;
+    },
+    collectValidators: function(){
+      var self = this;
+      self.elements = self.element.getActiveElements();
+      self.validators = self.element.retrieve('_validators', []).clone();
       
-      self.values = {};
-      // store the values of each element and create a form validator
-      // for the validation of each child element
       self.elements.each(function(element){
-        self.values[element.name] = element.getValue();
+        // store the values of each element into a hash that's passed to form validators
+        self.value()[element.name] = element.getValue();
         self.errors.push([element, []]);
-        
+
+        // create a form validator for that validates each child element        
         self.validators.push(function elementIsValid(values, complete){
           element.validate({
             UUID: self.UUID+'-child',
@@ -180,12 +184,9 @@
         });
       });
       
-      self.validators.each(function(validator){
-        validator.call(self, self.values, self.validatorComplete.bind(self).curry(validator));
-      });
-      
-      self.setupTimeoutHandler();
+      return this;
     },
+
     event_prefix:'form:validation',
     addError: function(error){
       this.errors.on(this.element).push(error);
@@ -200,7 +201,7 @@
       return this;
     },
     hasErrors: function(){
-      return this.errors.pluck(1).pluck('length').any();
+      return this.errors.any(function(record){ return record[1].length; });
     }
   });
   
