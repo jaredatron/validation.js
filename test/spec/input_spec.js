@@ -6,14 +6,15 @@ describe('Input', function () {
   });
 
   describe('#validate', function(){
-    
+
     it('should pass an array of errors to onInvalid', function(){
-      input.validates(function addingErrors(value, complete){
-        this.addError('error 1');
-        this.addError('error 2');
-        this.addError('error 3');
-        this.addError('error 4');
-        complete();
+      input.validates(function addingErrors(value, reportErrors){
+        reportErrors([
+          'error 1',
+          'error 2',
+          'error 3',
+          'error 4'
+        ]);
       });
       var on_invalid_called, input_errors;
       runs(function(){
@@ -34,14 +35,16 @@ describe('Input', function () {
         expect(input_errors[3]).toEqual('error 4');
       });
     });
-    
+
     it('should fire validation events', function(){
       var validation_failure_fired, validation_success_fired, is_valid;
 
       input
-        .validates(function depends(value, complete){
-          if (!is_valid) this.addError('is invalid');
-          complete();
+        .validates(function depends(value, reportErrors){
+          if (!is_valid)
+            reportErrors(['is invalid']);
+          else
+            reportErrors();
         })
         .observe('validation:failure', function(event){
           validation_failure_fired++;
@@ -72,7 +75,32 @@ describe('Input', function () {
         expect(validation_success_fired).toEqual(1);
       });
     });
-    
+
+    describe('fullMessages',function(){
+      it('should create strings of each error message', function(){
+        input.validates(function isBrown(value, reportErrors){
+          reportErrors(['is brown']);
+        });
+        var validation_errors;
+        runs(function(){
+          input.validate({
+            onComplete: function(validation){
+              validation_errors = validation.errors;
+            }
+          });
+        });
+        waits(1);
+        runs(function(){
+          expect(validation_errors.fullMessages().first()).toEqual('INPUT is brown');
+          input.id = "a_cow";
+          expect(validation_errors.fullMessages().first()).toEqual('a_cow is brown');
+          input.name = "a_tree";
+          expect(validation_errors.fullMessages().first()).toEqual('a_tree is brown');
+        });
+
+      });
+    });
+
   });
-  
+
 });

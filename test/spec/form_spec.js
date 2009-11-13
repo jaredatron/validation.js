@@ -17,19 +17,16 @@ describe('Form',function(){
   describe('#validate', function(){
     
     it('should collect errors for the form and it\'s active elements', function(){
-      form.validates(function(value, complete){
-        this.addError('must not suck');
-        complete();
+      form.validates(function(value, reportErrors){
+        reportErrors(['must not suck']);
       });
     
-      form.password.validates(function(value, complete){
-        this.addError('must not be a crappy password');
-        complete();
+      form.password.validates(function(value, reportErrors){
+        reportErrors(['must not be a crappy password']);
       });
       
-      form.password_confirmation.validates(function(value, complete){
-        this.addError('must not be a copy of a crappy password');
-        complete();
+      form.password_confirmation.validates(function(value, reportErrors){
+        reportErrors(['must not be a copy of a crappy password']);
       });
       
       var validation_errors;

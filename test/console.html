@@ -1,0 +1,105 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+  "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+  <title>Validations.js Test Runner</title>
+</head>
+<script type="text/javascript" src="../lib/consolex.js"></script>
+<script type="text/javascript" src="../lib/prototype.js"></script>
+<script type="text/javascript" src="../src/validation.js"></script>
+<script type="text/javascript" src="../src/validators.js"></script>
+<style type="text/css" media="screen">
+  label{
+    display:block;
+  }
+  input.invalid{
+    border: 1px solid red;
+  }
+  form.invalid{
+    background: #FFA4AD;
+  }
+</style>
+<body>
+  <form action="." method="get" id="singup">
+    <div class="errors"></div>
+    <label>
+      <input type="text" name="firstname"></input>
+      first name
+    </label>
+    <label>
+      <input type="text" name="email"></input>
+      email
+    </label>
+    <label>
+      <input type="password" name="password"></input>
+      password
+    </label>
+    <label>
+      <input type="password" name="password_confirmation"></input>
+      password (again)
+    </label>
+    <button type="button" name="validator">Validate</button>
+    <button type="submit" name="submiter">Submit</button>
+  </form>
+  <script type="text/javascript" charset="utf-8">
+  
+  document.observe("dom:loaded", function() {
+    
+    var form = document.forms[0];
+        errors = form.down('.errors');
+
+    form
+      .validates('passwords match')
+      .observe('validation:failure',function(event){
+        event.element().addClassName('invalid');
+      })
+      .observe('validation:success',function(event){
+        event.element().removeClassName('invalid');
+      })
+      .observe('form:validation:failure',function(event){
+        form.addClassName('invalid');
+        errors.update(event.memo.validation.errors.fullMessages().join(', '));
+      })
+      .observe('form:validation:success',function(event){
+        form.removeClassName('invalid');
+      });
+
+    form.firstname
+      .validates('is not blank');
+      
+    form.email
+      .validates('is not blank')
+      .validates(function isNotTaken(value, reportErrors){
+        // simulating ajax call by waiting 1 second
+        // before reporting errors
+        reportErrors.delay(1);
+      })
+    ;
+
+    form.password
+      .validates('is not blank');
+
+    form.password_confirmation
+      .validates('is not blank');
+
+    form.validator
+      .observe('click',function(){
+        form.validate();
+      });
+
+    form.observe('submit', function(event){
+      event.stop();
+
+      form.validate({
+        onValid: function(){ form.submit(); }
+      });
+    });
+
+    console.log('here');
+
+  });
+  </script>
+</body>
+</html>
+
+

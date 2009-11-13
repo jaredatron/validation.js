@@ -41,6 +41,10 @@ Form.Element.Validators['example validator'] = Form.Validators['example validato
         try{ element.validates('bad name'); }catch(e){ exception = e; }
         expect(exception.toString()).toEqual('TypeError: unable to find validator named "bad name"');
       });
+      
+      it('should not add a duplicate validator',function(){
+        // PENDING
+      })
 
     });
 
@@ -120,7 +124,7 @@ Form.Element.Validators['example validator'] = Form.Validators['example validato
         });
       });
 
-      it('should call onValid is there are no validators', function(){
+      it('should call onValid if there are no validators', function(){
         runs(function(){
           element.validate(validate_watchers);
         });
@@ -159,39 +163,54 @@ Form.Element.Validators['example validator'] = Form.Validators['example validato
 
         it('should raise an error if a validator calls complete twice', function(){
           var exception;
-          element.validates(function callsCompleteTwice(value, complete){
-            try{
-              complete(); complete();
-            }catch(e){
-              exception = e.toString();
-            }
-          });
+          element
+            .validates(function doesNothing(value, reportErrors){
+              reportErrors();
+            })
+            .validates(function callsCompleteTwice(value, reportErrors){
+              try{
+                reportErrors(); reportErrors();
+              }catch(e){
+                exception = e.toString();
+              }
+            })
+            .validates(function doesNothing(value, reportErrors){
+              reportErrors();
+            })
 
           runs(function(){
             element.validate();
           });
           waits(1);
           runs(function(){
-            expect(exception).toEqual('Error: validator called complete twice');
+            expect(exception).toEqual('Error: validator attempted to report errors twice');
           });
         });
 
         it('should raise an error if a validator calls after validation has completed', function(){
-          var exception;
-          element.validates(function callsCompleteTwice(value, complete){
-            try{
-              complete(); complete();
-            }catch(e){
-              exception = e.toString();
-            }
+          var validation_complete, reportErrorsMethod, exception;
+          element.validates(function callsCompleteTwice(value, reportErrors){
+            reportErrorsMethod = reportErrors;
+            reportErrors();
           });
 
           runs(function(){
-            element.validate();
+            validation_complete = false;
+            element.validate({
+              onComplete: function(validation){
+                validation_complete = validation.is_complete;
+              }
+            });
           });
-          waits(1);
+          waits(100);
           runs(function(){
-            expect(exception).toEqual('Error: validator called complete twice');
+            expect(validation_complete).toEqual(true);
+            try{
+              reportErrorsMethod();
+            }catch(e){
+              exception = e.toString();
+            }
+            expect(exception).toEqual('Error: validator attempted to report errors after validation completed');
           });
         });
 

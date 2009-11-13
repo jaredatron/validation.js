@@ -1,30 +1,39 @@
 Object.extend(Form.Element.Validators, (function() {
   
-  function isBlank(value, complete){
-    if (!value.blank()) this.addError('must be blank');
-    complete();
+  function isBlank(value, reportErrors){
+    if (!value.blank())
+      reportErrors(['must be blank']);
+    else
+      reportErrors();
   };
   
-  function isNotBlank(value, complete){
-      if (value.blank()) this.addError('cannot be blank');
-      complete();
+  function isNotBlank(value, reportErrors){
+      if (value.blank())
+        reportErrors(['cannot be blank']);
+      else
+        reportErrors();
     };
     
-  function isChecked(checked, complete){
-    if (!checked) this.addError('must be checked');
-    complete();
+  function isChecked(checked, reportErrors){
+    if (!checked)
+      reportErrors(['must be checked']);
+    else
+      reportErrors();
   };
   
-  function isNotChecked(checked, complete){
-    if (!!checked) this.addError('cannot be checked');
-    complete();
+  function isNotChecked(checked, reportErrors){
+    if (!!checked)
+      reportErrors(['cannot be checked']);
+    else
+      reportErrors();
   };
 
   var EMAIL_ADDRESS_REGEX = /^([A-Za-z0-9]{1,}([-_\.&'][A-Za-z0-9]{1,}){0,}){1,}@(([A-Za-z0-9]{1,}[-]{0,1})\.){1,}[A-Za-z]{2,6}$/;
-  function isAnEmailAddress(value, complete){
+  function isAnEmailAddress(value, reportErrors){
     if (!EMAIL_ADDRESS_REGEX.test(value))
-      this.addError('must be a valid email address');
-    complete();
+        reportErrors(['must be a valid email address']);
+      else
+        reportErrors();
   };
   
   
@@ -41,9 +50,11 @@ Object.extend(Form.Element.Validators, (function() {
 
 Object.extend(Form.Validators, (function() {
 
-  function passwordsMatch(values, complete){
-    if (values.password != values.password_confirmation) this.addError('passwords do not match');
-    complete();
+  function passwordsMatch(values, reportErrors){
+    if (values.password != values.password_confirmation)
+      reportErrors(['passwords do not match']);
+    else
+      reportErrors();
   }
   
   return {
