@@ -1,7 +1,11 @@
 describe('[identical specs]', function(){
 
-// we needed a validator for forms and form elements that had the same name
-Form.Element.Validators['example validator'] = Form.Validators['example validator'] = function exampleValidator(){};
+// I needed a validator for forms and form elements that had the same name
+Form.Element.Validators['example validator'] =
+Form.Validators['example validator'] =
+function exampleValidator(value, reportErrors){
+  reportErrors();
+};
 
 
 ['Form','Input'].each(function(type){
@@ -32,6 +36,13 @@ Form.Element.Validators['example validator'] = Form.Validators['example validato
         expect(element.validators().length).toEqual(1);
       });
 
+      it('should not add the same validator twice',function(){
+        element.validates('example validator');
+        expect(element.validators().length).toEqual(1);
+        element.validates('example validator');
+        expect(element.validators().length).toEqual(1);
+      });
+
       it('should raise an error when given anything other then a function or a string', function(){
         var exception;
         try{ element.validates(); }catch(e){ exception = e; }
@@ -41,10 +52,6 @@ Form.Element.Validators['example validator'] = Form.Validators['example validato
         try{ element.validates('bad name'); }catch(e){ exception = e; }
         expect(exception.toString()).toEqual('TypeError: unable to find validator named "bad name"');
       });
-      
-      it('should not add a duplicate validator',function(){
-        // PENDING
-      })
 
     });
 
@@ -61,18 +68,16 @@ Form.Element.Validators['example validator'] = Form.Validators['example validato
         on_valid_called = on_invalid_called = on_timeout_called = on_complete_called = false;
       });
 
-
-
       it('should run each validator', function(){
         var first_validator, second_validator;
         element
-          .validates(function firstValidator(value, complete){
+          .validates(function firstValidator(value, reportErrors){
             first_validator = true;
-            complete();
+            reportErrors();
           })
-          .validates(function secondValidator(value, complete){
+          .validates(function secondValidator(value, reportErrors){
             second_validator = true;
-            complete();
+            reportErrors();
           });
 
         runs(function(){
@@ -105,22 +110,38 @@ Form.Element.Validators['example validator'] = Form.Validators['example validato
         function bustedValidator(){}
         element
           .validates(brokenValidator)
-          .validates(function(value, complete){ complete(); })
+          .validates(function(value, reportErrors){ reportErrors(); })
           .validates(bustedValidator);
 
         var timedout_validators;
         runs(function(){
           element.validate({
-            timeout: 0.1,
+            timeout: 0.5,
             onTimeout: function(validation, validators){
               timedout_validators = validators;
             }
           });
         });
-        waits(110);
+        waits(510);
         runs(function(){
           expect(timedout_validators[0]).toEqual(brokenValidator);
           expect(timedout_validators[1]).toEqual(bustedValidator);
+        });
+      });
+
+      it('should accept a function in place of an options hash as an onComplete handler',function(){
+        var on_complete_run;
+        function onComplete(){
+          on_complete_run = true;
+        }
+
+        runs(function(){
+          on_complete_run = false;
+          element.validate(onComplete);
+        });
+        waits(1);
+        runs(function(){
+          expect(on_complete_run).toEqual(true);
         });
       });
 

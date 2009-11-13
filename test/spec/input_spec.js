@@ -35,44 +35,93 @@ describe('Input', function () {
         expect(input_errors[3]).toEqual('error 4');
       });
     });
+    
+    
+    
+    describe('should fire validation events', function(){
+      var report_errors, is_valid,
+          validation_start_fired,
+          validation_finish_fired,
+          validation_success_fired,
+          validation_failure_fired,
+          validation_timeout_fired;
 
-    it('should fire validation events', function(){
-      var validation_failure_fired, validation_success_fired, is_valid;
+      beforeEach(function(){
+        validation_start_fired = validation_finish_fired = validation_success_fired =
+        validation_failure_fired = validation_timeout_fired = 0;
+        
+        input
+          .validates(function depends(value, reportErrors){
+            if (!report_errors) return;
+            if (!is_valid)
+              reportErrors(['is invalid']);
+            else
+              reportErrors();
+          })
+          .observe('validation:start', function(event){
+            validation_start_fired++;
+          })
+          .observe('validation:finish', function(event){
+            validation_finish_fired++;
+          })
+          .observe('validation:success', function(event){
+            validation_success_fired++;
+          })
+          .observe('validation:failure', function(event){
+            validation_failure_fired++;
+          })
+          .observe('validation:timeout', function(event){
+            validation_timeout_fired++;
+          });
+      });
 
-      input
-        .validates(function depends(value, reportErrors){
-          if (!is_valid)
-            reportErrors(['is invalid']);
-          else
-            reportErrors();
-        })
-        .observe('validation:failure', function(event){
-          validation_failure_fired++;
-        })
-        .observe('validation:success', function(event){
-          validation_success_fired++;
+
+      it('should fire start,finsh and failure when validation fails', function(){
+        runs(function(){
+          report_errors = true;
+          is_valid = false;
+          input.validate();
         });
+        waits(1);
+        runs(function(){
+          expect(validation_start_fired  ).toEqual(1);
+          expect(validation_finish_fired ).toEqual(1);
+          expect(validation_success_fired).toEqual(0);
+          expect(validation_failure_fired).toEqual(1);
+          expect(validation_timeout_fired).toEqual(0);
+        });
+      });
 
-      runs(function(){
-        validation_failure_fired = validation_success_fired = 0;
-        is_valid = false;
-        input.validate();
+      it('should fire start,finsh and success when validation succeeds', function(){
+        runs(function(){
+          report_errors = true;
+          is_valid = true;
+          input.validate();
+        });
+        waits(1);
+        runs(function(){
+          expect(validation_start_fired  ).toEqual(1);
+          expect(validation_finish_fired ).toEqual(1);
+          expect(validation_success_fired).toEqual(1);
+          expect(validation_failure_fired).toEqual(0);
+          expect(validation_timeout_fired).toEqual(0);
+        });
+        waits(1);
       });
-      waits(1);
-      runs(function(){
-        expect(validation_failure_fired).toEqual(1);
-        expect(validation_success_fired).toEqual(0);
-      });
-      waits(1);
-      runs(function(){
-        validation_failure_fired = validation_success_fired = 0;
-        is_valid = true;
-        input.validate();
-      });
-      waits(1);
-      runs(function(){
-        expect(validation_failure_fired).toEqual(0);
-        expect(validation_success_fired).toEqual(1);
+      
+      it('should fire start,finsh and timedout when validation timesout', function(){
+        runs(function(){
+          report_errors = false;
+          input.validate({timeout: 0.1});
+        });
+        waits(110);
+        runs(function(){
+          expect(validation_start_fired  ).toEqual(1);
+          expect(validation_finish_fired ).toEqual(1);
+          expect(validation_success_fired).toEqual(0);
+          expect(validation_failure_fired).toEqual(0);
+          expect(validation_timeout_fired).toEqual(1);
+        });
       });
     });
 

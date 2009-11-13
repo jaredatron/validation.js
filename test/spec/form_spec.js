@@ -13,25 +13,27 @@ describe('Form',function(){
     form.appendChild(password_confirmation);
   });
 
-  
+
   describe('#validate', function(){
-    
+
     it('should collect errors for the form and it\'s active elements', function(){
       form.validates(function(value, reportErrors){
         reportErrors(['must not suck']);
       });
-    
+
       form.password.validates(function(value, reportErrors){
         reportErrors(['must not be a crappy password']);
       });
-      
+
       form.password_confirmation.validates(function(value, reportErrors){
         reportErrors(['must not be a copy of a crappy password']);
       });
-      
+
       var validation_errors;
       runs(function(){
         form.validate({
+          UUID: 'PETER',
+          debug: true,
           onComplete: function(validation){
             validation_errors = validation.errors;
           }
@@ -39,43 +41,37 @@ describe('Form',function(){
       });
       waits(100);
       runs(function(){
+        console.dir(validation_errors);
         expect(validation_errors.on(form)[0]).toEqual('must not suck');
         expect(validation_errors.on(form.password)[0]).toEqual('must not be a crappy password');
         expect(validation_errors.on(form.password_confirmation)[0]).toEqual('must not be a copy of a crappy password');
       });
     });
-    
+
     it('should fire events for the form as well as it\'s elements', function(){
       var form_validation_failure_event_fired, form_validation_success_event_fired,
           element_validation_failure_event_fired, element_validation_success_event_fired;
 
       form
         .observe('form:validation:failure', function(event){
-          console.info('form', 'validation:failure', event.element(), event.memo);
           form_validation_failure_event_fired++;
         })
         .observe('form:validation:success', function(event){
-          console.info('form', 'validation:success', event.element(), event.memo);
           form_validation_success_event_fired++;
         });
-        
+
       form.password
         .observe('validation:failure', function(event){
-          console.info('password', 'validation:failure', event.element(), event.memo);
           element_validation_failure_event_fired++;
         })
         .observe('validation:success', function(event){
-          console.info('password', 'validation:success', event.element(), event.memo);
           element_validation_success_event_fired++;
         });
 
       runs(function(){
         form_validation_failure_event_fired = form_validation_success_event_fired =
         element_validation_failure_event_fired = element_validation_success_event_fired = 0;
-        console.info('here');
-        form.validate({
-          UUID: 'ass face'
-        });
+        form.validate();
       });
       waits(1);
       runs(function(){
@@ -85,15 +81,39 @@ describe('Form',function(){
         expect(element_validation_success_event_fired).toEqual(1);
       });
     });
-    
-    
-    it('should pass any elements and/or element\'s validators to onTimeout', function(){
-      // yay mega complicated
-      
+
+    it('should send the validators and elements that timed out to the onTimeout handler', function(){
+      function brokenValidator(){}
+      function bustedValidator(){}
+
+      form
+        .validates(brokenValidator)
+        .validates(function(value, reportErrors){ reportErrors(); })
+        .validates(bustedValidator);
+
+      form.password
+        .validates(brokenValidator)
+        .validates(function(value, reportErrors){ reportErrors(); })
+        .validates(bustedValidator);
+
+      var timedout_validators;
+      runs(function(){
+        form.validate({
+          timeout: 0.1,
+          onTimeout: function(validation, validators){
+            timedout_validators = validators;
+          }
+        });
+      });
+      waits(110);
+      runs(function(){
+        expect(timedout_validators[0]).toEqual(brokenValidator);
+        expect(timedout_validators[1]).toEqual(bustedValidator);
+        expect(timedout_validators[2].validators[0]).toEqual(brokenValidator);
+        expect(timedout_validators[2].validators[1]).toEqual(bustedValidator);
+      });
     });
-    
-    // TODO we need a while lot more timeout tests
-    
+
   });
-  
+
 });

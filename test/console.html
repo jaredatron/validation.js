@@ -12,12 +12,24 @@
   label{
     display:block;
   }
-  input.invalid{
+  form img.spinner{
+    position: absolute;
+  }
+  form .errors{
+    font-weight: bold;
+  }
+  form input.invalid{
     border: 1px solid red;
   }
   form.invalid{
     background: #FFA4AD;
   }
+  form button[type=submit][disabled]{
+    opacity: 0.5;
+    -moz-opacity: 0.5;
+    filter:alpha(opacity=50);
+  }
+  
 </style>
 <body>
   <form action="." method="get" id="singup">
@@ -40,21 +52,26 @@
     </label>
     <button type="button" name="validator">Validate</button>
     <button type="submit" name="submiter">Submit</button>
+    <img class="spinner" src="http://www.ajaxload.info/cache/FF/FF/FF/00/00/00/1-0.gif"></img>
   </form>
   <script type="text/javascript" charset="utf-8">
   
   document.observe("dom:loaded", function() {
     
     var form = document.forms[0];
-        errors = form.down('.errors');
+        errors = form.down('.errors'),
+        spinner = form.down('.spinner').hide(),
+        submit = form.down('button[type=submit]');
 
     form
       .validates('passwords match')
-      .observe('validation:failure',function(event){
-        event.element().addClassName('invalid');
+      .observe('form:validation:start',function(event){
+        spinner.show();
+        submit.disabled = true;
       })
-      .observe('validation:success',function(event){
-        event.element().removeClassName('invalid');
+      .observe('form:validation:finish',function(event){
+        spinner.hide();
+        submit.disabled = false;
       })
       .observe('form:validation:failure',function(event){
         form.addClassName('invalid');
@@ -62,6 +79,18 @@
       })
       .observe('form:validation:success',function(event){
         form.removeClassName('invalid');
+      })
+      .observe('validation:start',function(event){
+        console.log('validating', event.element());
+      })
+      .observe('validation:finish',function(event){
+        console.log(event.element(), 'is', event.memo.validation.isValid());
+      })
+      .observe('validation:failure',function(event){
+        event.element().addClassName('invalid');
+      })
+      .observe('validation:success',function(event){
+        event.element().removeClassName('invalid');
       });
 
     form.firstname
@@ -69,10 +98,15 @@
       
     form.email
       .validates('is not blank')
+      .validates('is an email address')
       .validates(function isNotTaken(value, reportErrors){
         // simulating ajax call by waiting 1 second
         // before reporting errors
         reportErrors.delay(1);
+      })
+      .observe('change',function(event){
+        console.log('chaned');
+        form.email.validate();
       })
     ;
 

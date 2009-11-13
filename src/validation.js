@@ -49,6 +49,7 @@
 
   var FormElementValidation = Class.create({
     timeout:    10, // seconds
+    debug:      false,
     onValid:    Prototype.emptyFunction,
     onInvalid:  Prototype.emptyFunction,
     onTimeout:  Prototype.emptyFunction,
@@ -57,11 +58,15 @@
       var self = this;
       self.UUID = new Date().getTime();
 
+      if (Object.isFunction(options)) options = {onComplete:options};
       Object.extend(self,options);
       self.is_complete = false;
       self.timedout = false;
       self.errors = new FormElementValidationErrors(element);
       self.element = $(element);
+
+      self.log('validator spawned');
+      self.fire('start');
     },
     collectValidators: function(){
       this.validators = this.element.retrieve('_validators', []).clone();
@@ -74,9 +79,14 @@
     run: function(){
       var self = this;
       self.collectValidators();
-      if (!self.validators.length) return self.complete();
+      if (!self.validators.length){
+        self.log('completeing because no validators found');
+        self.complete();
+        return;
+      }
 
       self.set_timeout_id = setTimeout(function(){ // timeout handler
+        self.log('timeout handler fired');
         self.timedout = true;
         self.complete();
       }, self.timeout * 1000);
@@ -85,14 +95,28 @@
         validator(self.value(), function reportErrors(errors){ self.reportErrors(validator, errors); });
       });
     },
+
+    log: function(){
+      if (this.debug)
+        console.info.apply(console,[this.UUID,'->'].concat($A(arguments)).concat([this]));
+      return this;
+    },
+
     reportErrors: function(validator, errors){
       var self = this;
       if (self.is_complete) throw new Error('validator attempted to report errors after validation completed');
       if (!self.validators.include(validator)) throw new Error('validator attempted to report errors twice');
 
+
+      errors || (errors = []);
+      self.log('reporting errors for',validator, errors);
       self.addErrors(errors);
+      // self.log('removing validator',validator,'from',self.UUID,'from', ('element' in validator ? validator.element : ''));
       self.validators = self.validators.without(validator);
-      if (!self.validators.length) self.complete();
+      if (!self.validators.length){
+        self.log('completing as intended');
+        self.complete();
+      }
     },
 
     addErrors: function(errors){
@@ -118,20 +142,23 @@
           this.completeUnsuccessfully();
 
       this.onComplete(this, this.element);
-      this.fire('complete');
+      this.fire('finish');
       return this;
     },
     completeSuccessfully: function(){
+      this.log('completeing successfully');
       this.onValid(this, this.element);
       this.fire('success');
       return this;
     },
     completeUnsuccessfully: function(){
+      this.log('completeing unsuccessfully');
       this.onInvalid(this, this.errors, this.element);
       this.fire('failure');
       return this;
     },
     completeTimedout: function(){
+      this.log('timing out');
       this.onTimeout(this, this.validators, this.element);
       this.fire('timeout');
       return this;
@@ -203,17 +230,27 @@
         self.value()[element.name] = element.getValue();
         self.errors.push([element, []]);
 
-        // create a form validator for that validates each child element
-        self.validators.push(function elementIsValid(values, complete){
+        // create a form validator that validates the child element
+        var elementIsValid = function elementIsValid(values, reportErrors){
           element.validate({
-            UUID: self.UUID+'-child',
-            timeout: self.timeout,
-            onComplete: function(validation){
-              self.addErrorsOn(element, validation.errors);
-              complete();
+            UUID: self.UUID+'-child-'+(new Date().getTime()),
+            debug: self.debug,
+            timeout: self.timeout - 0.1,
+            onValid: function(){
+              reportErrors();
+            },
+            onInvalid: function(validation){
+              self.addErrorsOn(validation.element, validation.errors);
+              reportErrors();
+            },
+            onTimeout: function(validation, validators){
+              elementIsValid.element = validation.element;
+              elementIsValid.validation = validation;
+              elementIsValid.validators = validators;
             }
           });
-        });
+        };
+        self.validators.push(elementIsValid);
       });
 
       return this;
